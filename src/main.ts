@@ -1,10 +1,17 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  const localStorageRoot = process.env.STORAGE_LOCAL_ROOT_PATH ?? 'uploads';
+  app.useStaticAssets(join(process.cwd(), localStorageRoot), {
+    prefix: `/${localStorageRoot}/`,
+  });
 
   app.setGlobalPrefix('api');
   app.enableCors({

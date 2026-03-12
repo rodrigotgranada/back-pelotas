@@ -19,6 +19,13 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# local uploaded files
+/uploads
+
+# firebase service account keys
+*firebase-adminsdk*.json
+ecpelotas-firebase-adminsdk.json
+
 # OS/editor artifacts
 .DS_Store
 Thumbs.db

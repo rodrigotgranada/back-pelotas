@@ -74,6 +74,9 @@ export class UserResponseDto {
   @ApiProperty({ example: false })
   emailVerified: boolean;
 
+  @ApiProperty({ example: 'pending', enum: ['pending', 'active', 'blocked'] })
+  status: 'pending' | 'active' | 'blocked';
+
   @ApiPropertyOptional({ example: '2026-03-08T11:00:00.000Z' })
   lastLoginAt?: Date;
 

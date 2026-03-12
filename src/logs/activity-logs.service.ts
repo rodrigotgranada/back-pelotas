@@ -14,6 +14,9 @@ export interface RecordActivityLogInput {
   message?: string;
   flags?: string[];
   metadata?: Record<string, unknown>;
+  ipAddress?: string;
+  userAgent?: string;
+  correlationId?: string;
 }
 
 @Injectable()
@@ -34,6 +37,9 @@ export class ActivityLogsService {
       message: input.message ?? null,
       flags: input.flags ?? [],
       metadata: input.metadata ?? {},
+      ipAddress: input.ipAddress ?? null,
+      userAgent: input.userAgent ?? null,
+      correlationId: input.correlationId ?? null,
     });
   }
 

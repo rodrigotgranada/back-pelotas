@@ -5,7 +5,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { LogsModule } from './logs/logs.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { RolesModule } from './roles/roles.module';
 import { UsersModule } from './users/users.module';
+import { VerificationCodesModule } from './verification-codes/verification-codes.module';
 
 const databaseImports =
   process.env.NODE_ENV === 'test'
@@ -26,6 +29,9 @@ const databaseImports =
     ConfigModule.forRoot({ isGlobal: true }),
     ...databaseImports,
     LogsModule,
+    NotificationsModule,
+    VerificationCodesModule,
+    RolesModule,
     UsersModule,
     AuthModule,
   ],

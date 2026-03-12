@@ -6,6 +6,9 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { ROLE_CODES } from '../auth/authorization/role-codes';
+import { RequireRoleCodes } from '../auth/authorization/require-role-codes.decorator';
+import { RolesGuard } from '../auth/authorization/roles.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ActivityLogsService } from './activity-logs.service';
 import { QueryActivityLogsDto } from './dto/query-activity-logs.dto';
@@ -19,6 +22,8 @@ export class LogsController {
   constructor(private readonly activityLogsService: ActivityLogsService) {}
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
   @ApiOperation({ summary: 'Listar logs de atividade com filtros' })
   @ApiQuery({ name: 'action', required: false })
   @ApiQuery({ name: 'entity', required: false })
