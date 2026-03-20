@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { compare, hash } from 'bcryptjs';
@@ -30,6 +31,7 @@ interface RequestContext {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   private static readonly PHONE_CONTACT_TYPES = ['phone', 'mobile', 'whatsapp'];
   private static readonly EMAIL_CODE_EXPIRATION_HOURS = 2;
   private static readonly PHONE_CODE_EXPIRATION_HOURS = 2;
@@ -311,17 +313,27 @@ export class UsersService {
       }
     }
 
-    const user = await this.userModel.create(payload);
+    let user;
+    try {
+      user = await this.userModel.create(payload);
+    } catch (dbError) {
+      this.logger.error(`Error creating user in DB: ${dbError.message}`, dbError.stack);
+      throw dbError;
+    }
 
-    // Send welcome email
-    const loginUrl = process.env.FRONTEND_URL || 'http://localhost:4200/login';
-    await this.notificationsService.sendWelcomeEmail({
-      channel: 'email',
-      recipient: createDto.email,
-      name: createDto.firstName,
-      temporaryPassword: isFixedPassword ? undefined : finalPassword,
-      loginUrl,
-    });
+    // Send welcome email - do not fail creation if email fails
+    try {
+      const loginUrl = process.env.FRONTEND_URL || 'http://localhost:4200/login';
+      await this.notificationsService.sendWelcomeEmail({
+        channel: 'email',
+        recipient: createDto.email,
+        name: createDto.firstName,
+        temporaryPassword: isFixedPassword ? undefined : finalPassword,
+        loginUrl,
+      });
+    } catch (emailError) {
+      this.logger.error(`Failed to send welcome email to ${createDto.email}: ${emailError.message}`, emailError.stack);
+    }
 
     const response = this.toResponse(user as any);
 
@@ -596,6 +608,27 @@ export class UsersService {
       metadata: {
         deletedAt: now,
       },
+    });
+  }
+
+  async hardDelete(id: string, deletedBy?: string): Promise<void> {
+    const user = await this.getByIdOrFail(id);
+
+    if (user.photoStorageKey) {
+      await this.uploadsService.deleteFileByKey(user.photoStorageKey);
+    }
+
+    await this.userModel.deleteOne({ _id: user._id }).exec();
+
+    await this.activityLogsService.record({
+      action: 'user.hard-delete',
+      entity: 'user',
+      entityId: user._id.toString(),
+      status: 'success',
+      actorUserId: deletedBy,
+      actorEmail: user.email,
+      message: 'Usuario e seus dados removidos permanentemente (Hard Delete)',
+      flags: ['user', 'hard-delete', 'success'],
     });
   }
 

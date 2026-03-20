@@ -491,6 +491,17 @@ export class UsersController {
     await this.usersService.softDelete(id, req.user?.sub);
   }
 
+  @Delete(':id/hard')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes(ROLE_CODES.OWNER)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Deletar usuario permanentemente de toda a base (Apenas Owner)' })
+  @ApiParam({ name: 'id', description: 'Id do usuario a ser removido' })
+  @ApiNoContentResponse({ description: 'Usuario e seus dados removidos fisicamente' })
+  async hardDelete(@Param('id') id: string, @Req() req: { user?: { sub?: string } }) {
+    await this.usersService.hardDelete(id, req.user?.sub);
+  }
+
   private extractRequestContext(req: RequestInfo): {
     ipAddress?: string;
     userAgent?: string;
