@@ -6,7 +6,7 @@ import { RoleEntity, RoleSchema } from '../src/roles/entities/role.entity';
 import { UserEntity, UserSchema } from '../src/users/entities/user.entity';
 
 interface SeedRole {
-  code: 'owner' | 'admin' | 'editor' | 'socio';
+  code: 'owner' | 'admin' | 'editor' | 'socio' | 'user';
   name: string;
   level: number;
 }
@@ -18,6 +18,7 @@ const rolesToSeed: SeedRole[] = [
   { code: 'admin', name: 'Admin', level: 61 },
   { code: 'editor', name: 'Editor', level: 29 },
   { code: 'socio', name: 'Socio', level: 13 },
+  { code: 'user', name: 'User', level: 7 },
 ];
 
 function loadEnvFromFileIfNeeded(): void {
@@ -82,7 +83,8 @@ async function main(): Promise<void> {
   const passwordHash = await hash('123456', 10);
 
   const usersToSeed = rolesToSeed.map((role, index) => ({
-    name: role.name,
+    firstName: role.name,
+    lastName: 'System',
     email: `${role.code}@pelotas.com.br`,
     password: passwordHash,
     document: buildDocumentForRole(index),
@@ -92,8 +94,27 @@ async function main(): Promise<void> {
     emailVerified: true,
     status: 'active',
     passwordUpdatedAt: now,
-    contacts: [],
-    addresses: [],
+    contacts: [
+      {
+        type: index % 2 === 0 ? 'whatsapp' : 'celular',
+        value: `5399999999${index}`,
+        isPrimary: true,
+        verifiedAt: now,
+      }
+    ],
+    addresses: [
+      {
+        type: 'home',
+        street: 'Rua Lobo da Costa',
+        number: `32${index}`,
+        neighborhood: 'Centro',
+        city: 'Pelotas',
+        state: 'RS',
+        country: 'Brasil',
+        zipCode: '96010150',
+        isPrimary: true,
+      }
+    ],
     emailVerification: null,
     emailChangeRequest: null,
   }));

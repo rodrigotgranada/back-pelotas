@@ -55,8 +55,9 @@ export class AuthService {
       throw new UnauthorizedException('Email ou senha invalidos');
     }
 
-    if (!user.isActive || user.status === 'blocked') {
-      throw new UnauthorizedException('Usuario inativo ou bloqueado');
+    if (!user.isActive || user.status === 'blocked' || user.status === 'suspended') {
+      const reasonMsg = user.status === 'suspended' && user.statusReason ? ` - Motivo: ${user.statusReason}` : '';
+      throw new UnauthorizedException(`Usuario inativo ou bloqueado${reasonMsg}`);
     }
 
     if (user.status === 'pending' || !user.emailVerified) {
@@ -130,7 +131,8 @@ export class AuthService {
     const user = await this.usersService.findOne(payload.sub);
 
     if (!user.isActive || user.status !== 'active') {
-      throw new UnauthorizedException('Usuario inativo ou bloqueado');
+      const reasonMsg = user.status === 'suspended' && user.statusReason ? ` - Motivo: ${user.statusReason}` : '';
+      throw new UnauthorizedException(`Usuario inativo ou bloqueado${reasonMsg}`);
     }
 
     return this.buildAuthResponse(user);

@@ -15,8 +15,11 @@ import { RolesService } from '../roles/roles.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { VerificationCodesService } from '../verification-codes/verification-codes.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { ListUsersDto } from './dto/list-users.dto';
+import { PaginatedUsersResponseDto } from './dto/paginated-users-response.dto';
 import { UserDocument, UserEntity } from './entities/user.entity';
 
 interface RequestContext {
@@ -168,7 +171,8 @@ export class UsersService {
     const status = !isActive ? 'blocked' : emailVerified ? 'active' : 'pending';
 
     const user = await this.userModel.create({
-      name: createUserDto.name,
+      firstName: createUserDto.firstName,
+      lastName: createUserDto.lastName,
       email: createUserDto.email.toLowerCase(),
       document: createUserDto.document,
       documentType: createUserDto.documentType,
@@ -205,7 +209,7 @@ export class UsersService {
       passwordResetRequest: null,
     });
 
-    const response = this.toResponse(user.toObject());
+    const response = this.toResponse(user as any); // Cast as expected by Mongoose returning document
 
     await this.activityLogsService.record({
       action: 'user.create',
@@ -226,18 +230,200 @@ export class UsersService {
     return response;
   }
 
-  async findAll(): Promise<UserResponseDto[]> {
-    const users = await this.userModel
-      .find({ deletedAt: null })
-      .sort({ createdAt: -1 })
-      .lean();
+  async createAdminUser(createDto: CreateAdminUserDto, creatorId: string): Promise<UserResponseDto> {
+    try {
+      await this.ensureUniqueEmail(createDto.email);
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        await this.activityLogsService.record({
+          action: 'user.createAdmin',
+          entity: 'user',
+          status: 'failure',
+          actorUserId: creatorId,
+          message: 'Tentativa de cadastro admin com email ja existente',
+          flags: ['user', 'create', 'failure', 'duplicate-email'],
+          metadata: { attemptedEmail: createDto.email.toLowerCase() },
+        });
+      }
+      throw error;
+    }
 
-    return users.map((user) => this.toResponse(user));
+    if (createDto.document) {
+      try { await this.ensureUniqueDocument(createDto.document); } 
+      catch (error) { throw error; }
+    }
+
+    const normalizedContacts = this.normalizeContacts(createDto.contacts ?? []);
+    if ((normalizedContacts ?? []).length > 0) {
+      try { await this.ensureUniquePhoneContacts(normalizedContacts!); }
+      catch (error) { throw error; }
+    }
+
+    const isFixedPassword = !!createDto.password;
+    const finalPassword = createDto.password || Array(8).fill("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz").map(function(x) { return x[Math.floor(Math.random() * x.length)] }).join('');
+    
+    const now = new Date();
+    const hashedPassword = await hash(finalPassword, 10);
+    const isActive = createDto.isActive ?? true;
+
+    // Use spread payload to avoid mapping 'null' string-assigned types to strictly typed models
+    const payload: any = {
+      firstName: createDto.firstName,
+      lastName: createDto.lastName,
+      email: createDto.email.toLowerCase(),
+      password: hashedPassword,
+      passwordHistory: [],
+      roleId: this.toObjectIdOrNull(createDto.roleId),
+      photoUrl: null,
+      photoStorageKey: null,
+      isActive,
+      emailVerified: true, // For admin creation, assume email is right
+      status: !isActive ? 'blocked' : 'active',
+      passwordUpdatedAt: now,
+      failedLoginAttempts: 0,
+      loginBlockedUntil: null,
+      refreshTokenHash: null,
+      refreshTokenExpiresAt: null,
+      createdBy: this.toObjectIdOrNull(creatorId),
+      contacts: normalizedContacts ?? [],
+      addresses:
+        createDto.addresses?.map((address) => ({
+          type: address.type,
+          street: address.street,
+          number: address.number,
+          complement: address.complement ?? null,
+          neighborhood: address.neighborhood,
+          city: address.city,
+          state: address.state,
+          zipCode: address.zipCode,
+          country: address.country,
+          isPrimary: address.isPrimary ?? false,
+        })) ?? [],
+      emailVerification: null,
+      emailChangeRequest: null,
+      passwordResetRequest: null,
+    };
+
+    if (createDto.document) {
+      payload.document = createDto.document;
+      if (createDto.documentType) {
+        payload.documentType = createDto.documentType;
+      }
+    }
+
+    const user = await this.userModel.create(payload);
+
+    // Send welcome email
+    const loginUrl = process.env.FRONTEND_URL || 'http://localhost:4200/login';
+    await this.notificationsService.sendWelcomeEmail({
+      channel: 'email',
+      recipient: createDto.email,
+      name: createDto.firstName,
+      temporaryPassword: isFixedPassword ? undefined : finalPassword,
+      loginUrl,
+    });
+
+    const response = this.toResponse(user as any);
+
+    await this.activityLogsService.record({
+      action: 'user.createAdmin',
+      entity: 'user',
+      entityId: response.id,
+      status: 'success',
+      actorUserId: creatorId,
+      actorEmail: response.email,
+      message: 'Usuario cadastrado via Admin com sucesso',
+      flags: ['user', 'create-admin', 'success'],
+      metadata: {
+        email: response.email,
+        document: response.document,
+        roleId: createDto.roleId
+      },
+    });
+
+    return response;
+  }
+
+  async findAll(queryDto: ListUsersDto): Promise<PaginatedUsersResponseDto> {
+    const { search, role, isActive, page = 1, limit = 10 } = queryDto;
+    const skip = (page - 1) * limit;
+
+    const baseQuery: any = { deletedAt: null };
+
+    if (isActive !== undefined) {
+      baseQuery.isActive = isActive;
+    }
+
+    if (role) {
+      if (Types.ObjectId.isValid(role)) {
+        baseQuery.roleId = new Types.ObjectId(role);
+      } else {
+        const roleEntity = await this.rolesService.findByCode(role);
+        if (roleEntity) {
+          baseQuery.roleId = new Types.ObjectId(roleEntity._id.toString());
+        } else {
+          // Force empty result if role string is not found
+          baseQuery.roleId = new Types.ObjectId();
+        }
+      }
+    }
+
+    if (search) {
+       const searchRegex = new RegExp(search, 'i');
+       baseQuery.$or = [
+         { firstName: searchRegex },
+         { lastName: searchRegex },
+         { email: searchRegex },
+         { document: searchRegex }
+       ];
+    }
+
+    const [users, total, allRoles] = await Promise.all([
+      this.userModel
+        .find(baseQuery)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      this.userModel.countDocuments(baseQuery),
+      this.rolesService.findAllActive(),
+    ]);
+
+    // Build a lookup map from roleId (string) -> roleCode for O(1) access
+    const roleCodeMap = new Map<string, string>(
+      allRoles.map((r) => [r.id, r.code]),
+    );
+
+    return {
+      data: users.map((user) => {
+        const response = this.toResponse(user);
+        if (user.roleId) {
+          (response as any).roleCode = roleCodeMap.get(user.roleId.toString()) ?? undefined;
+        }
+        return response;
+      }),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
   }
 
   async findOne(id: string): Promise<UserResponseDto> {
     const user = await this.getByIdOrFail(id);
-    return this.toResponse(user);
+    const response = this.toResponse(user);
+
+    // Resolve roleCode from roleId so the frontend guard can validate correctly
+    if (user.roleId) {
+      try {
+        const role = await this.rolesService.findById(user.roleId);
+        (response as any).roleCode = role?.code ?? undefined;
+      } catch {
+        // Role not found - leave roleCode as undefined
+      }
+    }
+
+    return response;
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
@@ -293,7 +479,8 @@ export class UsersService {
     }
 
     const shouldUpdatePassword = Boolean(updateUserDto.password);
-    user.name = updateUserDto.name ?? user.name;
+    user.firstName = updateUserDto.firstName ?? user.firstName;
+    user.lastName = updateUserDto.lastName ?? user.lastName;
     user.email = updateUserDto.email?.toLowerCase() ?? user.email;
     user.document = updateUserDto.document ?? user.document;
     user.documentType = updateUserDto.documentType ?? user.documentType;
@@ -410,6 +597,113 @@ export class UsersService {
         deletedAt: now,
       },
     });
+  }
+
+  async forceLogout(id: string, actorUserId: string): Promise<void> {
+    const user = await this.getByIdOrFail(id);
+    const now = new Date();
+
+    await this.userModel
+      .updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            refreshTokenHash: null,
+            updatedAt: now,
+            updatedBy: this.toObjectIdOrNull(actorUserId),
+          },
+        },
+      )
+      .exec();
+
+    await this.activityLogsService.record({
+      action: 'user.force-logout',
+      entity: 'user',
+      entityId: user._id.toString(),
+      status: 'success',
+      actorUserId,
+      actorEmail: user.email,
+      message: 'Sessoes do usuario encerradas forcadamente pelo administrador',
+      flags: ['user', 'force-logout', 'admin', 'success'],
+    });
+  }
+
+  async suspend(id: string, reason: string, actorUserId: string): Promise<UserResponseDto> {
+    const user = await this.userModel.findById(this.parseObjectId(id)).lean();
+
+    if (!user) {
+      throw new NotFoundException(`Usuario com id ${id} nao encontrado`);
+    }
+
+    const now = new Date();
+    await this.userModel
+      .updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            isActive: false,
+            status: 'suspended',
+            statusReason: reason,
+            updatedAt: now,
+            updatedBy: this.toObjectIdOrNull(actorUserId),
+          },
+        },
+      )
+      .exec();
+
+    await this.activityLogsService.record({
+      action: 'user.suspend',
+      entity: 'user',
+      entityId: user._id.toString(),
+      status: 'success',
+      actorUserId,
+      actorEmail: user.email,
+      message: `Usuario suspenso com motivo: ${reason}`,
+      flags: ['user', 'suspend', 'admin', 'success'],
+    });
+
+    const updatedUser = await this.userModel.findById(user._id).lean();
+    return this.toResponse(updatedUser as any);
+  }
+
+  async reactivate(id: string, requestContext?: RequestContext): Promise<UserResponseDto> {
+    const user = await this.userModel.findById(this.parseObjectId(id)).lean();
+
+    if (!user) {
+      throw new NotFoundException(`Usuario com id ${id} nao encontrado`);
+    }
+
+    const now = new Date();
+    await this.userModel
+      .updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            deletedAt: null,
+            deletedBy: null,
+            updatedAt: now,
+            isActive: true,
+            status: 'active',
+          },
+        },
+      )
+      .exec();
+
+    await this.activityLogsService.record({
+      action: 'user.reactivate',
+      entity: 'user',
+      entityId: user._id.toString(),
+      status: 'success',
+      message: 'Usuario reativado pelo administrador',
+      flags: ['user', 'reactivate', 'success'],
+      ipAddress: requestContext?.ipAddress,
+      userAgent: requestContext?.userAgent,
+      correlationId: requestContext?.correlationId,
+    });
+
+    // Bring user fresh from DB
+    const reactivatedUser = await this.getByIdOrFail(id);
+    return this.toResponse(reactivatedUser);
   }
 
   async validateCredentials(
@@ -879,6 +1173,67 @@ export class UsersService {
     return this.findOne(userId);
   }
 
+  async uploadUserPhotoByAdmin(
+    targetUserId: string,
+    actorUserId: string,
+    file?: {
+      buffer: Buffer;
+      mimetype: string;
+      originalname: string;
+      size: number;
+    },
+    requestContext?: RequestContext,
+  ): Promise<UserResponseDto> {
+    const user = await this.getByIdOrFail(targetUserId);
+    const uploadResult = await this.uploadsService.uploadImageForEntity({
+      entity: 'users',
+      entityId: user._id.toString(),
+      file,
+    });
+
+    const previousPhotoStorageKey = user.photoStorageKey ?? null;
+
+    const now = new Date();
+    await this.userModel
+      .updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            photoUrl: uploadResult.url,
+            photoStorageKey: uploadResult.key,
+            updatedAt: now,
+            updatedBy: this.toObjectIdOrNull(actorUserId),
+          },
+        },
+      )
+      .exec();
+
+    if (previousPhotoStorageKey) {
+      await this.uploadsService.deleteFileByKey(previousPhotoStorageKey);
+    }
+
+    await this.activityLogsService.record({
+      action: 'user.photo.update',
+      entity: 'user',
+      entityId: user._id.toString(),
+      status: 'success',
+      actorUserId,
+      actorEmail: user.email,
+      message: 'Foto de perfil atualizada pelo administrador',
+      flags: ['user', 'photo', 'update', 'admin', 'success'],
+      metadata: {
+        storageKey: uploadResult.key,
+        contentType: uploadResult.contentType,
+        size: uploadResult.size,
+      },
+      ipAddress: requestContext?.ipAddress,
+      userAgent: requestContext?.userAgent,
+      correlationId: requestContext?.correlationId,
+    });
+
+    return this.findOne(targetUserId);
+  }
+
   async removeOwnPhoto(userId: string, requestContext?: RequestContext): Promise<UserResponseDto> {
     const user = await this.getByIdOrFail(userId);
 
@@ -1315,7 +1670,8 @@ export class UsersService {
   private toResponse(user: UserEntity): UserResponseDto {
     return {
       id: user._id.toString(),
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       document: user.document,
       documentType: user.documentType,

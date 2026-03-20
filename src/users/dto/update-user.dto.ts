@@ -86,11 +86,17 @@ export class UpdateUserAddressDto {
 }
 
 export class UpdateUserDto {
-  @ApiPropertyOptional({ example: 'Rodrigo Granada', minLength: 3 })
+  @ApiPropertyOptional({ example: 'Rodrigo', minLength: 2 })
   @IsOptional()
   @IsString()
-  @MinLength(3)
-  name?: string;
+  @MinLength(2)
+  firstName?: string;
+
+  @ApiPropertyOptional({ example: 'Granada', minLength: 2 })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  lastName?: string;
 
   @ApiPropertyOptional({ example: 'novo-email@pelotas.dev' })
   @IsOptional()

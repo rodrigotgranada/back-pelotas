@@ -50,8 +50,11 @@ export class UserResponseDto {
   @ApiProperty({ example: '69ad688617d7de52325e3b65' })
   id: string;
 
-  @ApiProperty({ example: 'Rodrigo Granada' })
-  name: string;
+  @ApiProperty({ example: 'Rodrigo' })
+  firstName: string;
+
+  @ApiProperty({ example: 'Granada' })
+  lastName: string;
 
   @ApiProperty({ example: 'rodrigo@pelotas.dev' })
   email: string;
@@ -65,6 +68,9 @@ export class UserResponseDto {
   @ApiPropertyOptional({ example: '69ad688617d7de52325e3b66' })
   roleId?: string;
 
+  @ApiPropertyOptional({ example: 'owner', description: 'Codigo do cargo do usuario (owner, admin, editor, socio, user)' })
+  roleCode?: string;
+
   @ApiPropertyOptional({ example: 'https://cdn.pelotas.dev/users/1.jpg' })
   photoUrl?: string;
 
@@ -74,8 +80,11 @@ export class UserResponseDto {
   @ApiProperty({ example: false })
   emailVerified: boolean;
 
-  @ApiProperty({ example: 'pending', enum: ['pending', 'active', 'blocked'] })
-  status: 'pending' | 'active' | 'blocked';
+  @ApiProperty({ example: 'pending', enum: ['pending', 'active', 'blocked', 'suspended'] })
+  status: 'pending' | 'active' | 'blocked' | 'suspended';
+
+  @ApiPropertyOptional({ example: 'Inadimplencia', description: 'Motivo caso o status seja suspenso ou bloqueado' })
+  statusReason?: string;
 
   @ApiPropertyOptional({ example: '2026-03-08T11:00:00.000Z' })
   lastLoginAt?: Date;

@@ -89,10 +89,15 @@ export class CreateUserAddressDto {
 }
 
 export class CreateUserDto {
-  @ApiProperty({ example: 'Rodrigo Granada', minLength: 3 })
+  @ApiProperty({ example: 'Rodrigo', minLength: 2 })
   @IsString()
-  @MinLength(3)
-  name: string;
+  @MinLength(2)
+  firstName: string;
+
+  @ApiProperty({ example: 'Granada', minLength: 2 })
+  @IsString()
+  @MinLength(2)
+  lastName: string;
 
   @ApiProperty({ example: 'rodrigo@pelotas.dev' })
   @IsEmail()

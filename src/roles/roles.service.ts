@@ -16,6 +16,7 @@ export class RolesService implements OnModuleInit {
     { code: 'admin', name: 'Admin', level: 61 },
     { code: 'editor', name: 'Editor', level: 29 },
     { code: 'socio', name: 'Socio', level: 13 },
+    { code: 'user', name: 'User', level: 7 },
   ];
 
   constructor(
@@ -48,6 +49,10 @@ export class RolesService implements OnModuleInit {
     return this.roleModel
       .findOne({ _id: normalizedId, isActive: true })
       .lean();
+  }
+
+  async findByCode(code: string): Promise<RoleEntity | null> {
+    return this.roleModel.findOne({ code, isActive: true }).lean();
   }
 
   async findAllActive(): Promise<Array<{ id: string; code: string; name: string; level: number }>> {

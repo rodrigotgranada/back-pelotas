@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
 export type UserDocument = HydratedDocument<UserEntity>;
-export type UserStatus = 'pending' | 'active' | 'blocked';
+export type UserStatus = 'pending' | 'active' | 'blocked' | 'suspended';
 
 @Schema({ _id: false })
 export class EmailVerificationData {
@@ -152,7 +152,10 @@ export class UserEntity {
   _id: Types.ObjectId;
 
   @Prop({ required: true, trim: true })
-  name: string;
+  firstName: string;
+
+  @Prop({ required: true, trim: true })
+  lastName: string;
 
   @Prop({ required: true, trim: true, lowercase: true })
   email: string;
@@ -181,8 +184,11 @@ export class UserEntity {
   @Prop({ default: false })
   emailVerified: boolean;
 
-  @Prop({ type: String, enum: ['pending', 'active', 'blocked'], default: 'pending' })
+  @Prop({ type: String, enum: ['pending', 'active', 'blocked', 'suspended'], default: 'pending' })
   status: UserStatus;
+
+  @Prop({ type: String, default: null })
+  statusReason?: string | null;
 
   @Prop({ type: Date, default: null })
   lastLoginAt?: Date | null;

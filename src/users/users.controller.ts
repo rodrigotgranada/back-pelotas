@@ -7,9 +7,11 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Put,
   Req,
+  Query,
   UnauthorizedException,
   UploadedFile,
   UseGuards,
@@ -34,14 +36,18 @@ import { RequireRoleCodes } from '../auth/authorization/require-role-codes.decor
 import { RolesGuard } from '../auth/authorization/roles.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
+import { CreateAdminUserDto } from './dto/create-admin-user.dto';
 import { ConfirmEmailChangeDto } from './dto/confirm-email-change.dto';
 import { ConfirmPhoneVerificationDto } from './dto/confirm-phone-verification.dto';
 import { RequestEmailChangeDto } from './dto/request-email-change.dto';
 import { RequestPhoneVerificationDto } from './dto/request-phone-verification.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { SuspendUserDto } from './dto/suspend-user.dto';
 import { UpdateOwnUserDto } from './dto/update-own-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { ListUsersDto } from './dto/list-users.dto';
+import { PaginatedUsersResponseDto } from './dto/paginated-users-response.dto';
 import { UsersService } from './users.service';
 
 interface RequestInfo {
@@ -75,13 +81,31 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  @Post('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
+  @ApiOperation({ summary: 'Cadastrar usuario via Backoffice/Admin (Ignora validacao inicial e gera senha temporaria)' })
+  @ApiBody({ type: CreateAdminUserDto })
+  @ApiResponse({ status: 201, description: 'Usuario criado com sucesso', type: UserResponseDto })
+  @ApiResponse({ status: 409, description: 'Email, documento ou telefone ja em uso' })
+  createAdminUser(
+    @Body() createAdminUserDto: CreateAdminUserDto,
+    @Req() req: { user?: { sub?: string } },
+  ): Promise<UserResponseDto> {
+    if (!req.user?.sub) {
+      throw new UnauthorizedException('Usuario nao autenticado');
+    }
+
+    return this.usersService.createAdminUser(createAdminUserDto, req.user.sub);
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
-  @ApiOperation({ summary: 'Listar usuarios ativos' })
-  @ApiOkResponse({ type: UserResponseDto, isArray: true })
-  findAll(): Promise<UserResponseDto[]> {
-    return this.usersService.findAll();
+  @ApiOperation({ summary: 'Listar usuarios com filtros e paginacao' })
+  @ApiOkResponse({ type: PaginatedUsersResponseDto })
+  findAll(@Query() query: ListUsersDto): Promise<PaginatedUsersResponseDto> {
+    return this.usersService.findAll(query);
   }
 
   @Get('me')
@@ -97,6 +121,40 @@ export class UsersController {
     }
 
     return this.usersService.findOne(authenticatedUserId);
+  }
+
+  @Patch(':id/reactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
+  @ApiOperation({ summary: 'Reativar usuario excluido (soft delete)' })
+  @ApiOkResponse({ type: UserResponseDto })
+  @ApiResponse({ status: 401, description: 'Nao autenticado' })
+  @ApiResponse({ status: 403, description: 'Sem permissao' })
+  async reactivate(
+    @Param('id') id: string,
+    @Req() req: RequestInfo,
+  ): Promise<UserResponseDto> {
+    return this.usersService.reactivate(id, this.extractRequestContext(req));
+  }
+
+  @Patch(':id/suspend')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
+  @ApiOperation({ summary: 'Suspender usuario com motivo' })
+  @ApiBody({ type: SuspendUserDto })
+  @ApiOkResponse({ type: UserResponseDto })
+  @ApiResponse({ status: 401, description: 'Nao autenticado' })
+  @ApiResponse({ status: 403, description: 'Sem permissao' })
+  async suspend(
+    @Param('id') targetUserId: string,
+    @Body() dto: SuspendUserDto,
+    @Req() req: { user?: { sub?: string } },
+  ): Promise<UserResponseDto> {
+    const actorUserId = req.user?.sub;
+    if (!actorUserId) {
+      throw new UnauthorizedException('Usuario nao autenticado');
+    }
+    return this.usersService.suspend(targetUserId, dto.reason, actorUserId);
   }
 
   @Get(':id')
@@ -207,6 +265,66 @@ export class UsersController {
     }
 
     return this.usersService.uploadOwnPhoto(authenticatedUserId, file, this.extractRequestContext(req));
+  }
+
+  @Post(':id/photo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  @ApiOperation({ summary: 'Upload de foto de perfil de um usuario pelo administrador' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiOkResponse({ type: UserResponseDto })
+  @ApiResponse({ status: 400, description: 'Arquivo invalido ou nao enviado' })
+  @ApiResponse({ status: 401, description: 'Nao autenticado' })
+  @ApiResponse({ status: 403, description: 'Sem permissao' })
+  uploadUserPhoto(
+    @Param('id') targetUserId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: { user?: { sub?: string } },
+  ): Promise<UserResponseDto> {
+    const actorUserId = req.user?.sub;
+    if (!actorUserId) {
+      throw new UnauthorizedException('Usuario nao autenticado');
+    }
+    return this.usersService.uploadUserPhotoByAdmin(
+      targetUserId,
+      actorUserId,
+      file,
+      this.extractRequestContext(req),
+    );
+  }
+
+  @Post(':id/force-logout')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Encerra sessoes ativas do usuario (Derrubar Sessao)' })
+  @ApiOkResponse({ description: 'Sessoes encerradas com sucesso' })
+  @ApiResponse({ status: 401, description: 'Nao autenticado' })
+  @ApiResponse({ status: 403, description: 'Sem permissao' })
+  async forceLogout(
+    @Param('id') targetUserId: string,
+    @Req() req: { user?: { sub?: string } },
+  ): Promise<{ message: string }> {
+    const actorUserId = req.user?.sub;
+    if (!actorUserId) {
+      throw new UnauthorizedException('Usuario nao autenticado');
+    }
+
+    await this.usersService.forceLogout(targetUserId, actorUserId);
+    return { message: 'Sessoes do usuario encerradas com sucesso' };
   }
 
   @Delete('me/photo')

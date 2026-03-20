@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 
 export type RoleDocument = HydratedDocument<RoleEntity>;
 
@@ -8,6 +8,9 @@ export type RoleDocument = HydratedDocument<RoleEntity>;
   timestamps: true,
 })
 export class RoleEntity {
+  _id: Types.ObjectId;
+  id: string;
+
   @Prop({ required: true, unique: true, trim: true, lowercase: true })
   code: string;
 

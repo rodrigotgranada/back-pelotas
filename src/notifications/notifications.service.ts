@@ -3,7 +3,7 @@ import { EmailNotificationChannel } from './channels/email-notification.channel'
 import { SmsNotificationChannel } from './channels/sms-notification.channel';
 import { WhatsappNotificationChannel } from './channels/whatsapp-notification.channel';
 import { NotificationChannel } from './channels/notification-channel.interface';
-import { SendVerificationCodeInput } from './notification.types';
+import { SendVerificationCodeInput, SendWelcomeEmailInput } from './notification.types';
 
 @Injectable()
 export class NotificationsService {
@@ -29,5 +29,15 @@ export class NotificationsService {
     }
 
     await channel.sendVerificationCode(input);
+  }
+
+  async sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<void> {
+    const channel = this.channelMap[input.channel];
+
+    if (!channel) {
+      throw new BadRequestException(`Canal de notificacao nao suportado: ${input.channel}`);
+    }
+
+    await channel.sendWelcomeEmail(input);
   }
 }

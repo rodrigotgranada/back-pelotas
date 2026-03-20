@@ -11,3 +11,11 @@ export interface SendVerificationCodeInput {
     | 'password-reset';
   expiresInHours: number;
 }
+
+export interface SendWelcomeEmailInput {
+  channel: NotificationChannelType;
+  recipient: string;
+  name: string;
+  temporaryPassword?: string;
+  loginUrl: string;
+}

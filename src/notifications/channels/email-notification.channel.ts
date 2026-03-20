@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import nodemailer, { Transporter } from 'nodemailer';
 import { NotificationChannel } from './notification-channel.interface';
-import { SendVerificationCodeInput } from '../notification.types';
+import { SendVerificationCodeInput, SendWelcomeEmailInput } from '../notification.types';
 
 @Injectable()
 export class EmailNotificationChannel implements NotificationChannel {
@@ -11,6 +11,47 @@ export class EmailNotificationChannel implements NotificationChannel {
   private transporter: Transporter | null = null;
 
   constructor(private readonly configService: ConfigService) {}
+
+  async sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<void> {
+    if (!this.isEmailEnabled()) {
+      this.logger.warn(`[email-disabled] purpose=welcome recipient=${input.recipient}`);
+      return;
+    }
+
+    const transport = this.getTransporter();
+    if (!transport) {
+      this.logger.warn(`[email-misconfigured] purpose=welcome recipient=${input.recipient}`);
+      return;
+    }
+
+    const subject = 'Bem-vindo(a)! Sua conta foi criada.';
+    const passwordMsgText = input.temporaryPassword ? `Sua senha temporaria de acesso e: ${input.temporaryPassword}\n` : 'Acesse seu painel para continuar.\n';
+    const passwordMsgHtml = input.temporaryPassword ? `<p>Sua senha provisória de acesso é: <strong>${input.temporaryPassword}</strong></p>` : '<p>Acesse seu painel pelo botão abaixo.</p>';
+
+    const text = 
+      `Ola ${input.name},\n\n` +
+      `Sua conta acabou de ser criada com sucesso.\n` +
+      passwordMsgText +
+      `Para acessar, va ate o link: ${input.loginUrl}\n\n` +
+      `Seja bem-vindo(a)!`;
+
+    const html = 
+      `<p>Olá <strong>${input.name}</strong>,</p>` +
+      `<p>Sua conta acabou de ser criada com sucesso no sistema.</p>` +
+      passwordMsgHtml +
+      `<p><a href="${input.loginUrl}" style="display:inline-block;padding:10px 20px;background-color:#0891b2;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Acessar a Plataforma</a></p>` +
+      `<p>Seja bem-vindo(a)!</p>`;
+
+    await transport.sendMail({
+      from: this.getFromAddress(),
+      to: input.recipient,
+      subject,
+      text,
+      html,
+    });
+
+    this.logger.log(`[email-sent] purpose=welcome recipient=${input.recipient}`);
+  }
 
   async sendVerificationCode(input: SendVerificationCodeInput): Promise<void> {
     if (!this.isEmailEnabled()) {
