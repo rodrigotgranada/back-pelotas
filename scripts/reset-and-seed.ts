@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import mongoose from 'mongoose';
 import { RoleEntity, RoleSchema } from '../src/roles/entities/role.entity';
 import { UserEntity, UserSchema } from '../src/users/entities/user.entity';
+import { NewsEntity, NewsSchema } from '../src/news/entities/news.entity';
 
 interface SeedRole {
   code: 'owner' | 'admin' | 'editor' | 'socio' | 'user';
@@ -121,9 +122,68 @@ async function main(): Promise<void> {
 
   const createdUsers = await userModel.insertMany(usersToSeed);
 
+  const newsModel = mongoose.model(NewsEntity.name, NewsSchema);
+  const ownerUser = createdUsers.find(u => u.email === 'owner@pelotas.com.br');
+
+  const newsToSeed = [
+    {
+       title: 'O Lobão venceu mais uma',
+       slug: 'o-lobao-venceu-mais-uma',
+       subtitle: 'Vitória histórica no clássico',
+       content: '<p>O Pelotas garantiu mais uma vitória emocionante neste domingo. A torcida lotou a Boca do Lobo e empurrou o time do início ao fim.</p>',
+       format: 'HTML',
+       status: 'PUBLISHED',
+       authorId: ownerUser?._id,
+       createdBy: ownerUser?._id,
+       updatedBy: ownerUser?._id,
+       isFeatured: true,
+       publishedAt: now,
+       createdAt: now,
+       updatedAt: now,
+       categories: ['Futebol Profissional'],
+       views: 1250
+    },
+    {
+       title: 'Nova Camisa Anunciada',
+       slug: 'nova-camisa-anunciada',
+       subtitle: 'Confira o novo manto Áureo-Cerúleo para a temporada',
+       content: { time: 1700000000000, blocks: [{ id: '1', type: 'paragraph', data: { text: 'A nova camisa já está disponível na loja oficial do clube. Garanta a sua e apoie o time!' } }], version: '2.28.0' },
+       format: 'BLOCKS',
+       status: 'PUBLISHED',
+       authorId: ownerUser?._id,
+       createdBy: ownerUser?._id,
+       updatedBy: ownerUser?._id,
+       isFeatured: false,
+       publishedAt: now,
+       createdAt: now,
+       updatedAt: now,
+       categories: ['Institucional'],
+       views: 45
+    },
+    {
+       title: 'Rascunho da Entrevista Exclusiva',
+       slug: 'rascunho-da-entrevista-exclusiva',
+       subtitle: '',
+       content: '<p>Revisar este artigo antes de publicarmos na quarta-feira...</p>',
+       format: 'HTML',
+       status: 'DRAFT',
+       authorId: ownerUser?._id,
+       createdBy: ownerUser?._id,
+       updatedBy: ownerUser?._id,
+       isFeatured: false,
+       createdAt: now,
+       updatedAt: now,
+       categories: ['Diretoria'],
+       views: 0
+    }
+  ];
+
+  await newsModel.insertMany(newsToSeed);
+
   console.log('Database reset completed.');
   console.log('Seeded roles:', createdRoles.map((role) => role.code).join(', '));
-  console.log('Seeded users:');
+  console.log('Seeded users: 5 accounts');
+  console.log('Seeded news: 3 articles');
   createdUsers.forEach((user) => {
     console.log(`- ${user.email} | password: 123456 | roleId: ${user.roleId}`);
   });

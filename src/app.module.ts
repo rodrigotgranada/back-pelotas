@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { LogsModule } from './logs/logs.module';
+import { NewsModule } from './news/news.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RolesModule } from './roles/roles.module';
 import { UsersModule } from './users/users.module';
@@ -34,6 +35,7 @@ const databaseImports =
     RolesModule,
     UsersModule,
     AuthModule,
+    NewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
