@@ -45,4 +45,14 @@ export class CreateNewsDto {
   @IsArray()
   @IsString({ each: true })
   categories?: string[];
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  allowComments?: boolean;
+
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  allowLikes?: boolean;
 }

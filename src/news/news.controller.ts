@@ -45,6 +45,13 @@ export class NewsController {
     return this.newsService.findAllPublic(queryParams);
   }
 
+  @Get('categories')
+  @ApiOperation({ summary: 'Buscar todas as categorias (tags) únicas ativas' })
+  @ApiResponse({ status: 200, type: [String] })
+  findAllCategories() {
+    return this.newsService.findAllCategories();
+  }
+
   @Post('public-news/:slug/view')
   @ApiOperation({ summary: 'Incrementar visualização de notícia pública' })
   @ApiResponse({ status: 200, type: NewsResponseDto })

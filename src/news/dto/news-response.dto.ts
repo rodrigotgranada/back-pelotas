@@ -43,6 +43,15 @@ export class NewsResponseDto {
   @ApiProperty()
   categories: string[];
 
+  @ApiProperty()
+  allowComments: boolean;
+
+  @ApiProperty()
+  allowLikes: boolean;
+
+  @ApiProperty()
+  likesCount: number;
+
   @ApiProperty({ enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'] })
   status: NewsStatus;
 
@@ -69,6 +78,9 @@ export class NewsResponseDto {
     this.isFeatured = news.isFeatured;
     this.authorDisplayName = news.authorDisplayName;
     this.categories = news.categories || [];
+    this.allowComments = news.allowComments !== false;
+    this.allowLikes = news.allowLikes !== false;
+    this.likesCount = news.likesCount || 0;
     this.status = news.status;
     this.publishedAt = news.publishedAt;
     this.views = news.views;

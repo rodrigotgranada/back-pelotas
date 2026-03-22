@@ -9,12 +9,19 @@ import { QueryNewsDto } from './dto/query-news.dto';
 import { PaginatedNewsResponseDto } from './dto/paginated-news-response.dto';
 import { NewsResponseDto } from './dto/news-response.dto';
 import { UploadsService } from '../uploads/uploads.service';
+import { CommentDocument, CommentEntity, CommentStatus } from './entities/comment.entity';
+import { NewsLikeDocument, NewsLikeEntity } from './entities/news-like.entity';
+import { BadRequestException } from '@nestjs/common';
 
 @Injectable()
 export class NewsService {
   constructor(
     @InjectModel(NewsEntity.name)
     private readonly newsModel: Model<NewsDocument>,
+    @InjectModel(CommentEntity.name)
+    private readonly commentModel: Model<CommentDocument>,
+    @InjectModel(NewsLikeEntity.name)
+    private readonly newsLikeModel: Model<NewsLikeDocument>,
     private readonly uploadsService: UploadsService,
   ) {}
 
@@ -167,6 +174,107 @@ export class NewsService {
     }
     // High-performance atomic increment instead of load-and-save cycle
     await this.newsModel.updateOne(filter, { $inc: { views: 1 } }).exec();
+  }
+
+  async findAllCategories(): Promise<string[]> {
+    const categories = await this.newsModel.distinct('categories', { deletedAt: null }).exec();
+    return categories.filter(c => c && c.trim().length > 0).sort();
+  }
+
+  async toggleLike(slugOrId: string, userId: string): Promise<{ liked: boolean; totalLikes: number }> {
+    let filter: any = { slug: slugOrId, deletedAt: null };
+    if (Types.ObjectId.isValid(slugOrId)) {
+      filter = { $or: [{ slug: slugOrId }, { _id: new Types.ObjectId(slugOrId) }], deletedAt: null };
+    }
+    const news = await this.newsModel.findOne(filter).exec();
+    if (!news) throw new NotFoundException('Notícia não encontrada');
+    if (!news.allowLikes) throw new BadRequestException('Curtidas estão desativadas para esta matéria');
+
+    const uid = new Types.ObjectId(userId);
+    const existingLike = await this.newsLikeModel.findOne({ newsId: news._id, userId: uid }).exec();
+
+    if (existingLike) {
+      await this.newsLikeModel.deleteOne({ _id: existingLike._id }).exec();
+      const updated = await this.newsModel.findOneAndUpdate(
+        { _id: news._id },
+        { $inc: { likesCount: -1 } },
+        { new: true }
+      ).exec();
+      return { liked: false, totalLikes: updated?.likesCount || 0 };
+    } else {
+      await this.newsLikeModel.create({ newsId: news._id, userId: uid });
+      const updated = await this.newsModel.findOneAndUpdate(
+        { _id: news._id },
+        { $inc: { likesCount: 1 } },
+        { new: true }
+      ).exec();
+      return { liked: true, totalLikes: updated?.likesCount || 0 };
+    }
+  }
+
+  async getLikeStatus(slugOrId: string, userId: string): Promise<{ liked: boolean }> {
+    let filter: any = { slug: slugOrId, deletedAt: null };
+    if (Types.ObjectId.isValid(slugOrId)) {
+      filter = { $or: [{ slug: slugOrId }, { _id: new Types.ObjectId(slugOrId) }], deletedAt: null };
+    }
+    const news = await this.newsModel.findOne(filter, { _id: 1 }).exec();
+    if (!news) return { liked: false };
+
+    const existingLike = await this.newsLikeModel.exists({ newsId: news._id, userId: new Types.ObjectId(userId) });
+    return { liked: existingLike !== null };
+  }
+
+  async addComment(slugOrId: string, userId: string, content: string) {
+    let filter: any = { slug: slugOrId, deletedAt: null };
+    if (Types.ObjectId.isValid(slugOrId)) {
+      filter = { $or: [{ slug: slugOrId }, { _id: new Types.ObjectId(slugOrId) }], deletedAt: null };
+    }
+    const news = await this.newsModel.findOne(filter).exec();
+    if (!news) throw new NotFoundException('Notícia não encontrada');
+    if (!news.allowComments) throw new BadRequestException('Comentários estão desativados para esta matéria');
+
+    const comment = await this.commentModel.create({
+      newsId: news._id,
+      authorId: new Types.ObjectId(userId),
+      content,
+      status: 'APPROVED'
+    });
+    
+    // To return the formatted comment
+    const populated = await comment.populate('authorId', 'firstName lastName');
+    return {
+      id: populated._id.toHexString(),
+      content: populated.content,
+      createdAt: populated.createdAt,
+      author: populated.authorId ? {
+        id: (populated.authorId as any)._id.toHexString(),
+        name: `${(populated.authorId as any).firstName} ${(populated.authorId as any).lastName || ''}`.trim()
+      } : null
+    };
+  }
+
+  async getComments(slugOrId: string) {
+    let filter: any = { slug: slugOrId, deletedAt: null };
+    if (Types.ObjectId.isValid(slugOrId)) {
+      filter = { $or: [{ slug: slugOrId }, { _id: new Types.ObjectId(slugOrId) }], deletedAt: null };
+    }
+    const news = await this.newsModel.findOne(filter, { _id: 1 }).exec();
+    if (!news) throw new NotFoundException('Notícia não encontrada');
+
+    const comments = await this.commentModel.find({ newsId: news._id, status: 'APPROVED' })
+      .sort({ createdAt: -1 })
+      .populate('authorId', 'firstName lastName')
+      .exec();
+      
+    return comments.map(c => ({
+      id: c._id.toHexString(),
+      content: c.content,
+      createdAt: c.createdAt,
+      author: c.authorId ? {
+        id: (c.authorId as any)._id.toHexString(),
+        name: `${(c.authorId as any).firstName} ${(c.authorId as any).lastName || ''}`.trim()
+      } : null
+    }));
   }
 
   async update(id: string, updateNewsDto: UpdateNewsDto, updatedBy: string): Promise<NewsResponseDto> {
