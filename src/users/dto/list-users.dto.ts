@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class ListUsersDto {
@@ -16,7 +16,11 @@ export class ListUsersDto {
   @ApiPropertyOptional({ description: 'Filtrar apenas usuarios ativos/inativos' })
   @IsOptional()
   @IsBoolean()
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   isActive?: boolean;
 
   @ApiPropertyOptional({ description: 'Numero da pagina', default: 1 })

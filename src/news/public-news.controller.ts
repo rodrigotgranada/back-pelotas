@@ -27,6 +27,16 @@ export class PublicNewsController {
     return this.newsService.findOnePublic(slug, req.user);
   }
 
+  @Get(':slug/related')
+  @ApiOperation({ summary: 'Listar matérias relacionadas (mesma categoria)' })
+  @ApiResponse({ status: 200, type: [NewsResponseDto] })
+  getRelated(
+    @Param('slug') slug: string,
+    @Query('limit') limit?: number
+  ) {
+    return this.newsService.findRelated(slug, limit || 3);
+  }
+
   @Post(':slug/like')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

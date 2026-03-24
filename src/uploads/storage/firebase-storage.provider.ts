@@ -33,16 +33,22 @@ export class FirebaseStorageProvider implements StorageProvider {
     const downloadToken = randomUUID();
     const file = this.storage.bucket(this.bucketName).file(key);
 
-    await file.save(input.buffer, {
-      contentType: input.mimeType,
-      resumable: false,
-      metadata: {
+    try {
+      await file.save(input.buffer, {
         contentType: input.mimeType,
+        resumable: false,
+        validation: false, // Optional: skips local hash validation
         metadata: {
-          firebaseStorageDownloadTokens: downloadToken,
+          contentType: input.mimeType,
+          metadata: {
+            firebaseStorageDownloadTokens: downloadToken,
+          },
         },
-      },
-    });
+      });
+    } catch (err: any) {
+      const message = err?.message ?? String(err);
+      throw new Error(`Firebase Storage upload failed: ${message}`);
+    }
 
     const encodedKey = encodeURIComponent(key);
     const url = `https://firebasestorage.googleapis.com/v0/b/${this.bucketName}/o/${encodedKey}?alt=media&token=${downloadToken}`;

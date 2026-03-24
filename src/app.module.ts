@@ -10,6 +10,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { RolesModule } from './roles/roles.module';
 import { UsersModule } from './users/users.module';
 import { VerificationCodesModule } from './verification-codes/verification-codes.module';
+import { SettingsModule } from './settings/settings.module';
+import { NewsletterModule } from './newsletter/newsletter.module';
 
 const databaseImports =
   process.env.NODE_ENV === 'test'
@@ -36,6 +38,8 @@ const databaseImports =
     UsersModule,
     AuthModule,
     NewsModule,
+    SettingsModule,
+    NewsletterModule,
   ],
   controllers: [AppController],
   providers: [AppService],

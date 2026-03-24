@@ -167,6 +167,30 @@ export class NewsService {
     return new NewsResponseDto(news);
   }
 
+  async findRelated(slugOrId: string, limit: number = 3): Promise<NewsResponseDto[]> {
+    let filter: any = { slug: slugOrId, deletedAt: null };
+    if (Types.ObjectId.isValid(slugOrId)) {
+      filter = { $or: [{ slug: slugOrId }, { _id: new Types.ObjectId(slugOrId) }], deletedAt: null };
+    }
+
+    const currentNews = await this.newsModel.findOne(filter).select('categories _id').exec();
+    if (!currentNews) return [];
+
+    const relatedFilter: any = {
+      _id: { $ne: currentNews._id },
+      status: 'PUBLISHED',
+      deletedAt: null,
+      categories: { $in: currentNews.categories || [] },
+    };
+
+    const related = await this.newsModel.find(relatedFilter)
+      .sort({ publishedAt: -1, createdAt: -1 })
+      .limit(limit)
+      .exec();
+
+    return related.map(item => new NewsResponseDto(item));
+  }
+
   async incrementViewCount(slugOrId: string): Promise<void> {
     let filter: any = { slug: slugOrId, deletedAt: null };
     if (Types.ObjectId.isValid(slugOrId)) {
@@ -198,7 +222,7 @@ export class NewsService {
       const updated = await this.newsModel.findOneAndUpdate(
         { _id: news._id },
         { $inc: { likesCount: -1 } },
-        { new: true }
+        { returnDocument: 'after' }
       ).exec();
       return { liked: false, totalLikes: updated?.likesCount || 0 };
     } else {
@@ -206,7 +230,7 @@ export class NewsService {
       const updated = await this.newsModel.findOneAndUpdate(
         { _id: news._id },
         { $inc: { likesCount: 1 } },
-        { new: true }
+        { returnDocument: 'after' }
       ).exec();
       return { liked: true, totalLikes: updated?.likesCount || 0 };
     }
