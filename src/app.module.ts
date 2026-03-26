@@ -12,6 +12,8 @@ import { UsersModule } from './users/users.module';
 import { VerificationCodesModule } from './verification-codes/verification-codes.module';
 import { SettingsModule } from './settings/settings.module';
 import { NewsletterModule } from './newsletter/newsletter.module';
+import { HistoryModule } from './history/history.module';
+import { MembershipModule } from './membership/membership.module';
 
 const databaseImports =
   process.env.NODE_ENV === 'test'
@@ -40,6 +42,8 @@ const databaseImports =
     NewsModule,
     SettingsModule,
     NewsletterModule,
+    HistoryModule,
+    MembershipModule,
   ],
   controllers: [AppController],
   providers: [AppService],

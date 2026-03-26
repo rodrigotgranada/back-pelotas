@@ -8,6 +8,7 @@ export interface PublicSettings {
   badgeUrl: string | null;
   themePreset: string;
   defaultNewsImageUrl: string | null;
+  isMembershipEnabled: boolean;
 }
 
 @Injectable()
@@ -19,7 +20,7 @@ export class SettingsService {
 
   async getPublicSettings(): Promise<PublicSettings> {
     const settings = await this.settingModel.find({
-      key: { $in: ['badgeUrl', 'themePreset', 'defaultNewsImageUrl'] },
+      key: { $in: ['badgeUrl', 'themePreset', 'defaultNewsImageUrl', 'isMembershipEnabled'] },
     });
 
     const map: Record<string, string> = {};
@@ -31,6 +32,7 @@ export class SettingsService {
       badgeUrl: map['badgeUrl'] ?? null,
       themePreset: map['themePreset'] ?? 'default',
       defaultNewsImageUrl: map['defaultNewsImageUrl'] ?? null,
+      isMembershipEnabled: (map['isMembershipEnabled'] ?? 'true') === 'true',
     };
   }
 

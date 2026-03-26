@@ -6,8 +6,11 @@ import {
   NotFoundException,
   UnauthorizedException,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { MembershipService } from '../membership/membership.service';
 import { compare, hash } from 'bcryptjs';
 import { Model, Types } from 'mongoose';
 import { ActivityLogsService } from '../logs/activity-logs.service';
@@ -48,6 +51,8 @@ export class UsersService {
     private readonly rolesService: RolesService,
     private readonly verificationCodesService: VerificationCodesService,
     private readonly uploadsService: UploadsService,
+    @Inject(forwardRef(() => MembershipService))
+    private readonly membershipService: MembershipService,
   ) {}
 
   async assertCanUpdateTargetUser(actorUserId: string | undefined, targetUserId: string): Promise<void> {
@@ -316,6 +321,19 @@ export class UsersService {
     let user;
     try {
       user = await this.userModel.create(payload);
+      
+      // If membership info provided, create subscription
+      if (createDto.membershipPlanId) {
+        const subscription = await this.membershipService.enroll(
+          user._id.toString(),
+          createDto.membershipPlanId,
+          'pix' // Default for admin creation
+        );
+
+        if (createDto.isMembershipPayed !== false) {
+          await this.membershipService.activateSubscription((subscription as any)._id.toString());
+        }
+      }
     } catch (dbError) {
       this.logger.error(`Error creating user in DB: ${dbError.message}`, dbError.stack);
       throw dbError;
@@ -573,6 +591,27 @@ export class UsersService {
     });
 
     return response;
+  }
+
+  async updateRoleToSocio(userId: string): Promise<void> {
+    const role = await this.rolesService.findByCode('socio');
+    if (!role) {
+      throw new NotFoundException('Role "socio" não encontrada');
+    }
+
+    await this.userModel.updateOne(
+      { _id: this.parseObjectId(userId) },
+      { $set: { roleId: role._id } },
+    ).exec();
+
+    await this.activityLogsService.record({
+      action: 'user.role-update',
+      entity: 'user',
+      entityId: userId,
+      status: 'success',
+      message: 'Usuario promovido a Socio',
+      flags: ['user', 'role-update', 'socio', 'success'],
+    });
   }
 
   async softDelete(id: string, deletedBy?: string): Promise<void> {

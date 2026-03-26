@@ -62,4 +62,14 @@ export class CreateAdminUserDto {
   @ValidateNested({ each: true })
   @Type(() => CreateUserAddressDto)
   addresses?: CreateUserAddressDto[];
+
+  @ApiPropertyOptional({ description: 'ID do plano de socio se o usuario for criado como socio' })
+  @IsOptional()
+  @IsString()
+  membershipPlanId?: string;
+
+  @ApiPropertyOptional({ description: 'Se o plano ja deve ser criado como ativo/pago', default: true })
+  @IsOptional()
+  @IsBoolean()
+  isMembershipPayed?: boolean;
 }

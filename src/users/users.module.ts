@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { MembershipModule } from '../membership/membership.module';
 import { LogsModule } from '../logs/logs.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { RolesModule } from '../roles/roles.module';
@@ -17,6 +18,7 @@ import { UsersService } from './users.service';
     RolesModule,
     VerificationCodesModule,
     UploadsModule,
+    forwardRef(() => MembershipModule),
   ],
   controllers: [UsersController],
   providers: [UsersService],
