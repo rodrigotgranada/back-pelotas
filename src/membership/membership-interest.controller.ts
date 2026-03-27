@@ -1,0 +1,45 @@
+import { Controller, Post, Body, Get, UseGuards, Patch, Param } from '@nestjs/common';
+import { MembershipInterestService } from './membership-interest.service';
+import { CreateMembershipInterestDto } from './dto/create-interest.dto';
+import { UpdateInterestDto } from './dto/update-interest.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/authorization/roles.guard';
+import { RequireRoleCodes } from '../auth/authorization/require-role-codes.decorator';
+
+@Controller('membership-interests')
+export class MembershipInterestController {
+  constructor(private readonly interestService: MembershipInterestService) {}
+
+  @Post()
+  create(@Body() dto: CreateMembershipInterestDto) {
+    return this.interestService.create(dto);
+  }
+
+  @Get('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes('owner', 'admin')
+  findAll() {
+    return this.interestService.findAll();
+  }
+
+  @Get('admin/unread-count')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes('owner', 'admin')
+  countUnread() {
+    return this.interestService.countUnread();
+  }
+
+  @Patch('admin/:id/read')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes('owner', 'admin')
+  markAsRead(@Param('id') id: string) {
+    return this.interestService.markAsRead(id);
+  }
+
+  @Patch('admin/:id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes('owner', 'admin')
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateInterestDto) {
+    return this.interestService.update(id, dto);
+  }
+}
