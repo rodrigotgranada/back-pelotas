@@ -34,9 +34,9 @@ export class AuthService {
 
     await this.usersService.issueEmailVerificationCode(user.id);
 
+    const response = await this.buildAuthResponse(user);
     return {
-      user,
-      roleCode: undefined,
+      ...response,
       requiresEmailVerification: true,
       verificationEmail: user.email,
     };

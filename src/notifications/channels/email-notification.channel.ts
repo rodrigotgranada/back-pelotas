@@ -42,15 +42,18 @@ export class EmailNotificationChannel implements NotificationChannel {
       `<p><a href="${input.loginUrl}" style="display:inline-block;padding:10px 20px;background-color:#0891b2;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Acessar a Plataforma</a></p>` +
       `<p>Seja bem-vindo(a)!</p>`;
 
-    await transport.sendMail({
-      from: this.getFromAddress(),
-      to: input.recipient,
-      subject,
-      text,
-      html,
-    });
-
-    this.logger.log(`[email-sent] purpose=welcome recipient=${input.recipient}`);
+    try {
+      await transport.sendMail({
+        from: this.getFromAddress(),
+        to: input.recipient,
+        subject,
+        text,
+        html,
+      });
+      this.logger.log(`[email-sent] purpose=welcome recipient=${input.recipient}`);
+    } catch (error) {
+      this.logger.error(`[email-failed] purpose=welcome recipient=${input.recipient} error=${error.message}`);
+    }
   }
 
   async sendVerificationCode(input: SendVerificationCodeInput): Promise<void> {
@@ -87,15 +90,18 @@ export class EmailNotificationChannel implements NotificationChannel {
 <p>Validade: <strong>${input.expiresInHours} horas</strong></p>
 <p>Se voce nao solicitou, ignore este email.</p>`;
 
-    await transport.sendMail({
-      from: this.getFromAddress(),
-      to: input.recipient,
-      subject,
-      text,
-      html,
-    });
-
-    this.logger.log(`[email-sent] purpose=${input.purpose} recipient=${input.recipient}`);
+    try {
+      await transport.sendMail({
+        from: this.getFromAddress(),
+        to: input.recipient,
+        subject,
+        text,
+        html,
+      });
+      this.logger.log(`[email-sent] purpose=${input.purpose} recipient=${input.recipient}`);
+    } catch (error) {
+      this.logger.error(`[email-failed] purpose=${input.purpose} recipient=${input.recipient} error=${error.message}`);
+    }
   }
 
   private isEmailEnabled(): boolean {

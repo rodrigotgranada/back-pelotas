@@ -19,6 +19,9 @@ export class MembershipInterest {
   @Prop({ required: true, trim: true })
   phone: string;
 
+  @Prop({ default: true })
+  isWhatsApp: boolean;
+
   @Prop({ type: Types.ObjectId, ref: 'MembershipPlanEntity', required: true })
   planId: Types.ObjectId;
 
@@ -31,6 +34,9 @@ export class MembershipInterest {
     default: 'PENDING' 
   })
   status: string;
+
+  @Prop({ trim: true, default: null })
+  resolutionNotes?: string;
 
   createdAt: Date;
   updatedAt: Date;

@@ -1,4 +1,4 @@
-import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class UpdateInterestDto {
   @IsBoolean()
@@ -8,4 +8,8 @@ export class UpdateInterestDto {
   @IsEnum(['PENDING', 'CONTACTED', 'COMPLETED', 'REJECTED'])
   @IsOptional()
   status?: string;
+
+  @IsString()
+  @IsOptional()
+  resolutionNotes?: string;
 }

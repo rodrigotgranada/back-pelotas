@@ -20,4 +20,7 @@ export class CreateMembershipInterestDto {
   @IsMongoId()
   @IsNotEmpty()
   planId: string;
+
+  @IsNotEmpty()
+  isWhatsApp: boolean;
 }
