@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { json, urlencoded } from 'express';
 import { join } from 'path';
 import { AppModule } from './app.module';
 
@@ -12,6 +13,9 @@ async function bootstrap() {
   app.useStaticAssets(join(process.cwd(), localStorageRoot), {
     prefix: `/${localStorageRoot}/`,
   });
+
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ extended: true, limit: '50mb' }));
 
   app.setGlobalPrefix('api');
   app.enableCors({
