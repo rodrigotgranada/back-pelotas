@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   ValidateNested,
 } from 'class-validator';
 import { CreateUserContactDto, CreateUserAddressDto } from './create-user.dto';
@@ -29,6 +30,7 @@ export class CreateAdminUserDto {
   @ApiPropertyOptional({ example: '12345678901', description: 'Documento (CPF/CNPJ) do usuario' })
   @IsOptional()
   @IsString()
+  @Matches(/^\d+$/, { message: 'document deve conter apenas numeros' })
   document?: string;
 
   @ApiPropertyOptional({ example: 'cpf', description: 'Tipo do documento' })

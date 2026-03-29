@@ -101,7 +101,7 @@ export class MembershipController {
   @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Excluir plano' })
-  async deletePlan(@Param('id') id: string) {
-    return this.membershipService.deletePlan(id);
+  async deletePlan(@Req() req: any, @Param('id') id: string) {
+    return this.membershipService.deletePlan(id, req.user.id);
   }
 }

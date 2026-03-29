@@ -12,6 +12,7 @@ import { UploadsService } from '../uploads/uploads.service';
 import { CommentDocument, CommentEntity, CommentStatus } from './entities/comment.entity';
 import { NewsLikeDocument, NewsLikeEntity } from './entities/news-like.entity';
 import { BadRequestException } from '@nestjs/common';
+import { ActivityLogsService } from '../logs/activity-logs.service';
 
 @Injectable()
 export class NewsService {
@@ -23,6 +24,7 @@ export class NewsService {
     @InjectModel(NewsLikeEntity.name)
     private readonly newsLikeModel: Model<NewsLikeDocument>,
     private readonly uploadsService: UploadsService,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   private async generateSlug(title: string): Promise<string> {
@@ -53,6 +55,17 @@ export class NewsService {
     }
 
     const savedNews = await news.save();
+
+    await this.activityLogsService.record({
+      action: 'news.create',
+      entity: 'news',
+      entityId: savedNews._id.toHexString(),
+      status: 'success',
+      actorUserId: authorId,
+      message: 'Notícia criada pelo painel admin',
+      flags: ['news', 'create', 'success'],
+    });
+
     return new NewsResponseDto(savedNews);
   }
 
@@ -315,6 +328,17 @@ export class NewsService {
     news.updatedBy = new Types.ObjectId(updatedBy);
 
     const savedNews = await news.save();
+
+    await this.activityLogsService.record({
+      action: 'news.update',
+      entity: 'news',
+      entityId: id,
+      status: 'success',
+      actorUserId: updatedBy,
+      message: 'Notícia editada',
+      flags: ['news', 'update', 'success'],
+    });
+
     return new NewsResponseDto(savedNews);
   }
 
@@ -327,6 +351,16 @@ export class NewsService {
     news.deletedAt = new Date();
     news.deletedBy = new Types.ObjectId(deletedBy);
     await news.save();
+
+    await this.activityLogsService.record({
+      action: 'news.delete',
+      entity: 'news',
+      entityId: id,
+      status: 'success',
+      actorUserId: deletedBy,
+      message: 'Notícia movida para lixeira (soft delete)',
+      flags: ['news', 'delete', 'soft-delete', 'success'],
+    });
   }
 
   async hardRemove(id: string): Promise<void> {
@@ -334,6 +368,15 @@ export class NewsService {
     if (!news) {
       throw new NotFoundException('Notícia não encontrada');
     }
+
+    await this.activityLogsService.record({
+      action: 'news.hard-delete',
+      entity: 'news',
+      entityId: id,
+      status: 'success',
+      message: 'Notícia removida permanentemente',
+      flags: ['news', 'delete', 'hard-delete', 'success'],
+    });
   }
 
   async uploadImage(file: Express.Multer.File): Promise<{ success: number; file: { url: string } }> {

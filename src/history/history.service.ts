@@ -6,6 +6,7 @@ import { CreateHistoryDto } from './dto/create-history.dto';
 import { UpdateHistoryDto } from './dto/update-history.dto';
 
 import { UploadsService } from '../uploads/uploads.service';
+import { ActivityLogsService } from '../logs/activity-logs.service';
 
 @Injectable()
 export class HistoryService {
@@ -13,6 +14,7 @@ export class HistoryService {
     @InjectModel(HistoryEntity.name)
     private readonly historyModel: Model<HistoryDocument>,
     private readonly uploadsService: UploadsService,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   private async generateSlug(title: string): Promise<string> {
@@ -53,7 +55,20 @@ export class HistoryService {
       createdBy: new Types.ObjectId(userId),
     });
 
-    return history.save();
+    const savedHistory = await history.save();
+    
+    await this.activityLogsService.record({
+      action: 'history.create',
+      entity: 'history',
+      entityId: savedHistory._id.toHexString(),
+      status: 'success',
+      actorUserId: userId,
+      message: 'Secao historica criada',
+      flags: ['history', 'create', 'success'],
+      metadata: { slug, title: createDto.title },
+    });
+
+    return savedHistory;
   }
 
   async findAll(admin = false): Promise<HistoryEntity[]> {
@@ -99,7 +114,19 @@ export class HistoryService {
       updatedBy: new Types.ObjectId(userId),
     });
 
-    return history.save();
+    const savedHistory = await history.save();
+
+    await this.activityLogsService.record({
+      action: 'history.update',
+      entity: 'history',
+      entityId: id,
+      status: 'success',
+      actorUserId: userId,
+      message: 'Secao historica atualizada',
+      flags: ['history', 'update', 'success'],
+    });
+
+    return savedHistory;
   }
 
   private async uploadBase64Image(base64: string, entity: string, entityId: string): Promise<string> {
@@ -123,11 +150,21 @@ export class HistoryService {
     return result.url;
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, deletedBy: string): Promise<void> {
     const result = await this.historyModel.deleteOne({ _id: new Types.ObjectId(id) }).exec();
     if (result.deletedCount === 0) {
       throw new NotFoundException('Seção da história não encontrada');
     }
+
+    await this.activityLogsService.record({
+      action: 'history.delete',
+      entity: 'history',
+      entityId: id,
+      status: 'success',
+      actorUserId: deletedBy,
+      message: 'Secao historica excluida',
+      flags: ['history', 'delete', 'success'],
+    });
   }
 
   async reorder(ids: string[]): Promise<void> {
@@ -139,5 +176,14 @@ export class HistoryService {
     }));
 
     await this.historyModel.bulkWrite(operations);
+
+    // Logs the reorder without passing an actor since multiple could be involved, or pass "system"
+    await this.activityLogsService.record({
+      action: 'history.reorder',
+      entity: 'history',
+      status: 'success',
+      message: 'Cronologia de secoes historicas reordenada',
+      flags: ['history', 'reorder', 'success'],
+    });
   }
 }

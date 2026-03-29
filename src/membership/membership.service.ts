@@ -6,6 +6,7 @@ import { MembershipSubscriptionEntity, MembershipSubscriptionDocument } from './
 import { CreateMembershipPlanDto } from './dto/create-membership-plan.dto';
 import { UpdateMembershipPlanDto } from './dto/update-membership-plan.dto';
 import { UsersService } from '../users/users.service';
+import { ActivityLogsService } from '../logs/activity-logs.service';
 
 @Injectable()
 export class MembershipService {
@@ -16,6 +17,7 @@ export class MembershipService {
     private readonly subscriptionModel: Model<MembershipSubscriptionDocument>,
     @Inject(forwardRef(() => UsersService))
     private readonly usersService: UsersService,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   // --- Plan Management (Admin) ---
@@ -41,7 +43,17 @@ export class MembershipService {
       createdBy: new Types.ObjectId(adminId),
       updatedBy: new Types.ObjectId(adminId),
     });
-    return plan.save();
+    const savedPlan = await plan.save();
+    await this.activityLogsService.record({
+      action: 'membership.plan.create',
+      entity: 'membership-plan',
+      entityId: savedPlan._id.toHexString(),
+      status: 'success',
+      actorUserId: adminId,
+      message: 'Plano de socio criado',
+      flags: ['membership', 'create', 'success'],
+    });
+    return savedPlan;
   }
 
   async updatePlan(id: string, dto: UpdateMembershipPlanDto, adminId: string): Promise<MembershipPlanEntity> {
@@ -56,6 +68,17 @@ export class MembershipService {
       { new: true },
     );
     if (!plan) throw new NotFoundException('Plano não encontrado');
+    
+    await this.activityLogsService.record({
+      action: 'membership.plan.update',
+      entity: 'membership-plan',
+      entityId: id,
+      status: 'success',
+      actorUserId: adminId,
+      message: 'Plano de socio atualizado',
+      flags: ['membership', 'update', 'success'],
+    });
+
     return plan;
   }
 
@@ -77,9 +100,19 @@ export class MembershipService {
     return plan;
   }
 
-  async deletePlan(id: string): Promise<void> {
+  async deletePlan(id: string, adminId: string): Promise<void> {
     const result = await this.planModel.findByIdAndDelete(id).exec();
     if (!result) throw new NotFoundException('Plano não encontrado');
+
+    await this.activityLogsService.record({
+      action: 'membership.plan.delete',
+      entity: 'membership-plan',
+      entityId: id,
+      status: 'success',
+      actorUserId: adminId,
+      message: 'Plano de socio excluido',
+      flags: ['membership', 'delete', 'success'],
+    });
   }
 
   // --- Enrollment (Public) ---
@@ -120,6 +153,16 @@ export class MembershipService {
 
     // UPDATE USER ROLE to 'socio'
     await this.usersService.updateRoleToSocio(subscription.userId.toString());
+
+    await this.activityLogsService.record({
+      action: 'membership.subscription.activate',
+      entity: 'membership-subscription',
+      entityId: saved._id.toHexString(),
+      status: 'success',
+      actorUserId: subscription.userId.toString(),
+      message: 'Assinatura ativada (simulacao/pagamento)',
+      flags: ['membership', 'activate', 'success'],
+    });
 
     return saved;
   }

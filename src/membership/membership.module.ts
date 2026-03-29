@@ -8,6 +8,7 @@ import { MembershipInterest, MembershipInterestSchema } from './entities/members
 import { MembershipInterestService } from './membership-interest.service';
 import { MembershipInterestController } from './membership-interest.controller';
 import { UsersModule } from '../users/users.module';
+import { LogsModule } from '../logs/logs.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { UsersModule } from '../users/users.module';
       { name: MembershipInterest.name, schema: MembershipInterestSchema },
     ]),
     forwardRef(() => UsersModule),
+    LogsModule,
   ],
   controllers: [MembershipController, MembershipInterestController],
   providers: [MembershipService, MembershipInterestService],

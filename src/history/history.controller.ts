@@ -93,7 +93,7 @@ export class HistoryController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remover seção histórica' })
-  remove(@Param('id') id: string) {
-    return this.historyService.remove(id);
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.historyService.remove(id, req.user.sub);
   }
 }

@@ -615,6 +615,9 @@ export class UsersService {
   }
 
   async softDelete(id: string, deletedBy?: string): Promise<void> {
+    if (deletedBy) {
+      await this.assertCanUpdateTargetUser(deletedBy, id);
+    }
     const user = await this.getByIdOrFail(id);
     const deletedByObjectId = this.toObjectIdOrNull(deletedBy);
     const now = new Date();
@@ -672,6 +675,7 @@ export class UsersService {
   }
 
   async forceLogout(id: string, actorUserId: string): Promise<void> {
+    await this.assertCanUpdateTargetUser(actorUserId, id);
     const user = await this.getByIdOrFail(id);
     const now = new Date();
 
@@ -701,6 +705,7 @@ export class UsersService {
   }
 
   async suspend(id: string, reason: string, actorUserId: string): Promise<UserResponseDto> {
+    await this.assertCanUpdateTargetUser(actorUserId, id);
     const user = await this.userModel.findById(this.parseObjectId(id)).lean();
 
     if (!user) {

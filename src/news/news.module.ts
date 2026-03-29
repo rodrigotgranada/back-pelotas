@@ -7,6 +7,7 @@ import { NewsEntity, NewsSchema } from './entities/news.entity';
 import { NewsLikeEntity, NewsLikeSchema } from './entities/news-like.entity';
 import { CommentEntity, CommentSchema } from './entities/comment.entity';
 import { UploadsModule } from '../uploads/uploads.module';
+import { LogsModule } from '../logs/logs.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { UploadsModule } from '../uploads/uploads.module';
       { name: CommentEntity.name, schema: CommentSchema },
     ]),
     UploadsModule,
+    LogsModule,
   ],
   controllers: [NewsController, PublicNewsController],
   providers: [NewsService],
