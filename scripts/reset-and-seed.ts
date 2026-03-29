@@ -5,6 +5,11 @@ import mongoose from 'mongoose';
 import { RoleEntity, RoleSchema } from '../src/roles/entities/role.entity';
 import { UserEntity, UserSchema } from '../src/users/entities/user.entity';
 import { NewsEntity, NewsSchema } from '../src/news/entities/news.entity';
+import { SettingEntity, SettingSchema } from '../src/settings/entities/setting.entity';
+import { MembershipPlanEntity, MembershipPlanSchema } from '../src/membership/entities/membership-plan.entity';
+import { MembershipInterest, MembershipInterestSchema } from '../src/membership/entities/membership-interest.entity';
+import { HistoryEntity, HistorySchema } from '../src/history/entities/history.entity';
+import { SponsorEntity, SponsorSchema } from '../src/sponsors/entities/sponsor.entity';
 
 interface SeedRole {
   code: 'owner' | 'admin' | 'editor' | 'socio' | 'user';
@@ -65,11 +70,11 @@ async function main(): Promise<void> {
   const mongoUri = process.env.MONGODB_URI ?? DEFAULT_URI;
   await mongoose.connect(mongoUri);
 
-  const roleModel = mongoose.model(RoleEntity.name, RoleSchema);
-  const userModel = mongoose.model(UserEntity.name, UserSchema);
-
+  // 1. Drop Database
   await mongoose.connection.db?.dropDatabase();
 
+  // 2. Roles
+  const roleModel = mongoose.model(RoleEntity.name, RoleSchema);
   const createdRoles = await roleModel.insertMany(
     rolesToSeed.map((role) => ({
       code: role.code,
@@ -79,6 +84,8 @@ async function main(): Promise<void> {
     })),
   );
 
+  // 3. Users
+  const userModel = mongoose.model(UserEntity.name, UserSchema);
   const roleByCode = new Map(createdRoles.map((role) => [role.code, role]));
   const now = new Date();
   const passwordHash = await hash('123456', 10);
@@ -119,12 +126,20 @@ async function main(): Promise<void> {
     emailVerification: null,
     emailChangeRequest: null,
   }));
-
   const createdUsers = await userModel.insertMany(usersToSeed);
-
-  const newsModel = mongoose.model(NewsEntity.name, NewsSchema);
   const ownerUser = createdUsers.find(u => u.email === 'owner@pelotas.com.br');
 
+  // 4. Settings
+  const settingModel = mongoose.model(SettingEntity.name, SettingSchema);
+  await settingModel.insertMany([
+    { key: 'themePreset', value: 'default' },
+    { key: 'isMembershipEnabled', value: 'true' },
+    { key: 'isSponsorsEnabled', value: 'true' },
+    { key: 'badgeUrl', value: 'https://images.vexels.com/media/users/3/260756/isolated/preview/70a1cb6f3ff46b9ec95697af4c6e938e-escudo-vermelho-e-azul.png?w=256' },
+  ]);
+
+  // 5. News
+  const newsModel = mongoose.model(NewsEntity.name, NewsSchema);
   const newsToSeed = [
     {
        title: 'O Lobão venceu mais uma',
@@ -141,7 +156,8 @@ async function main(): Promise<void> {
        createdAt: now,
        updatedAt: now,
        categories: ['Futebol Profissional'],
-       views: 1250
+       views: 1250,
+       coverImageUrl: 'https://images.unsplash.com/photo-1518605368461-1e125228114eb?w=1280&q=80',
     },
     {
        title: 'Nova Camisa Anunciada',
@@ -177,21 +193,65 @@ async function main(): Promise<void> {
        views: 0
     }
   ];
-
   await newsModel.insertMany(newsToSeed);
 
-  console.log('Database reset completed.');
-  console.log('Seeded roles:', createdRoles.map((role) => role.code).join(', '));
-  console.log('Seeded users: 5 accounts');
-  console.log('Seeded news: 3 articles');
-  createdUsers.forEach((user) => {
-    console.log(`- ${user.email} | password: 123456 | roleId: ${user.roleId}`);
+  // 6. Sponsors
+  const sponsorModel = mongoose.model(SponsorEntity.name, SponsorSchema);
+  await sponsorModel.insertMany([
+    { name: 'Banrisul', websiteUrl: 'https://banrisul.com.br', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Banrisul_logo.svg/1024px-Banrisul_logo.svg.png', order: 1, isActive: true },
+    { name: 'Unimed', websiteUrl: 'https://unimed.coop.br', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Unimed_logo.svg/1024px-Unimed_logo.svg.png', order: 2, isActive: true },
+    { name: 'KTO', websiteUrl: 'https://kto.com', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/29/Logo_Kto.webp', order: 3, isActive: true }
+  ]);
+
+  // 7. Membership Plan
+  const planModel = mongoose.model(MembershipPlanEntity.name, MembershipPlanSchema);
+  const plan = await planModel.create({
+    name: 'Sócio Lobão Forte', 
+    description: 'O plano principal para todos os áureo-cerúleos.',
+    slug: 'lobao-forte', 
+    price: 49.90, 
+    interval: 'monthly',
+    benefits: ['Acesso a todos os jogos', 'Desconto na Loja Lobão', 'Carteirinha exclusiva'],
+    isActive: true, 
+    createdBy: ownerUser?._id, 
+    updatedBy: ownerUser?._id
   });
+
+  // 8. Membership Interests
+  const interestModel = mongoose.model(MembershipInterest.name, MembershipInterestSchema);
+  await interestModel.insertMany([
+    { name: 'João Batista', email: 'joao.batista@exemplo.com.br', phone: '53999990001', isWhatsApp: true, planId: plan._id, status: 'PENDING', isRead: false },
+    { name: 'Maria Costa', email: 'maria.costa@exemplo.com.br', phone: '53999990002', isWhatsApp: true, planId: plan._id, status: 'COMPLETED', isRead: true, resolutionNotes: 'Processo concluído via Pix.' },
+    { name: 'Carlos Alves', email: 'carlos.alves@exemplo.com.br', phone: '53999990003', isWhatsApp: false, planId: plan._id, status: 'REJECTED', isRead: true, resolutionNotes: 'O usuário desistiu no momento, pediu para retornar no mês seguinte.' },
+  ]);
+
+  // 9. History
+  const historyModel = mongoose.model(HistoryEntity.name, HistorySchema);
+  await historyModel.insertMany([
+    { 
+      title: '1908: A Fundação Áureo-Cerúlea', 
+      slug: '1908-fundacao', 
+      content: '<p>Tudo começou em 1908. Mais do que a união de jovens apaixonados por futebol, marcava-se ali a fundação de um ideal auricerúleo que perduraria por séculos. A história do Esporte Clube Pelotas está intrinsecamente ligada à alma de todos que o acompanham, sendo motivo de absoluto orgulho para o povo da Boca do Lobo e todo o Sul do Brasil.</p><p>As cores: Azul e Ouro foram definidas logo cedo como representações da coragem e das riquezas das raízes do clube.</p>', 
+      format: 'HTML', 
+      coverImageUrl: 'https://images.unsplash.com/photo-1549419142-b062ca39366f?w=1280&q=80', 
+      order: 1, 
+      isActive: true 
+    }
+  ]);
+
+  console.log('--- DATABASE SEED COMPLETO ---');
+  console.log('✔ Usuários: 5 contas criadas (senha padrão: 123456)');
+  console.log('✔ Notícias: 3 artigos');
+  console.log('✔ Configurações Globais: Inseridas');
+  console.log('✔ Programas de Sócio: 1 Plano, 3 Intenções cadastradas');
+  console.log('✔ História: Capítulo 1 inserido');
+  console.log('✔ Patrocinadores: 3 parceiros cadastrados');
+  console.log('------------------------------');
 }
 
 main()
   .catch((error) => {
-    console.error('Failed to reset and seed database.');
+    console.error('Falha ao resetar banco e semear dados iniciais.');
     console.error(error);
     process.exitCode = 1;
   })
