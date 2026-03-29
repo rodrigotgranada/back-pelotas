@@ -8,6 +8,7 @@ import { LogsModule } from './logs/logs.module';
 import { NewsModule } from './news/news.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RolesModule } from './roles/roles.module';
+import { SponsorsModule } from './sponsors/sponsors.module';
 import { UsersModule } from './users/users.module';
 import { VerificationCodesModule } from './verification-codes/verification-codes.module';
 import { SettingsModule } from './settings/settings.module';
@@ -44,6 +45,7 @@ const databaseImports =
     NewsletterModule,
     HistoryModule,
     MembershipModule,
+    SponsorsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
