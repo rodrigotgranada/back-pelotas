@@ -135,7 +135,7 @@ async function main(): Promise<void> {
     { key: 'themePreset', value: 'default' },
     { key: 'isMembershipEnabled', value: 'true' },
     { key: 'isSponsorsEnabled', value: 'true' },
-    { key: 'badgeUrl', value: 'https://images.vexels.com/media/users/3/260756/isolated/preview/70a1cb6f3ff46b9ec95697af4c6e938e-escudo-vermelho-e-azul.png?w=256' },
+    { key: 'badgeUrl', value: 'http://localhost:4200/placeholder-badge.svg' },
   ]);
 
   // 5. News
@@ -157,7 +157,7 @@ async function main(): Promise<void> {
        updatedAt: now,
        categories: ['Futebol Profissional'],
        views: 1250,
-       coverImageUrl: 'https://images.unsplash.com/photo-1518605368461-1e125228114eb?w=1280&q=80',
+       coverImageUrl: 'http://localhost:4200/placeholder-cover.svg',
     },
     {
        title: 'Nova Camisa Anunciada',
@@ -198,9 +198,9 @@ async function main(): Promise<void> {
   // 6. Sponsors
   const sponsorModel = mongoose.model(SponsorEntity.name, SponsorSchema);
   await sponsorModel.insertMany([
-    { name: 'Banrisul', websiteUrl: 'https://banrisul.com.br', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Banrisul_logo.svg/1024px-Banrisul_logo.svg.png', order: 1, isActive: true },
-    { name: 'Unimed', websiteUrl: 'https://unimed.coop.br', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Unimed_logo.svg/1024px-Unimed_logo.svg.png', order: 2, isActive: true },
-    { name: 'KTO', websiteUrl: 'https://kto.com', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/29/Logo_Kto.webp', order: 3, isActive: true }
+    { name: 'Banrisul', websiteUrl: 'https://banrisul.com.br', logoUrl: 'http://localhost:4200/placeholder-sponsor.svg', order: 1, isActive: true },
+    { name: 'Unimed', websiteUrl: 'https://unimed.coop.br', logoUrl: 'http://localhost:4200/placeholder-sponsor.svg', order: 2, isActive: true },
+    { name: 'KTO', websiteUrl: 'https://kto.com', logoUrl: 'http://localhost:4200/placeholder-sponsor.svg', order: 3, isActive: true }
   ]);
 
   // 7. Membership Plan
@@ -233,7 +233,7 @@ async function main(): Promise<void> {
       slug: '1908-fundacao', 
       content: '<p>Tudo começou em 1908. Mais do que a união de jovens apaixonados por futebol, marcava-se ali a fundação de um ideal auricerúleo que perduraria por séculos. A história do Esporte Clube Pelotas está intrinsecamente ligada à alma de todos que o acompanham, sendo motivo de absoluto orgulho para o povo da Boca do Lobo e todo o Sul do Brasil.</p><p>As cores: Azul e Ouro foram definidas logo cedo como representações da coragem e das riquezas das raízes do clube.</p>', 
       format: 'HTML', 
-      coverImageUrl: 'https://images.unsplash.com/photo-1549419142-b062ca39366f?w=1280&q=80', 
+      coverImageUrl: 'http://localhost:4200/placeholder-cover.svg', 
       order: 1, 
       isActive: true 
     }
