@@ -15,6 +15,7 @@ import { SettingsModule } from './settings/settings.module';
 import { NewsletterModule } from './newsletter/newsletter.module';
 import { HistoryModule } from './history/history.module';
 import { MembershipModule } from './membership/membership.module';
+import { IdolsModule } from './idols/idols.module';
 
 const databaseImports =
   process.env.NODE_ENV === 'test'
@@ -46,6 +47,7 @@ const databaseImports =
     HistoryModule,
     MembershipModule,
     SponsorsModule,
+    IdolsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
