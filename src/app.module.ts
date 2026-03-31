@@ -16,6 +16,8 @@ import { NewsletterModule } from './newsletter/newsletter.module';
 import { HistoryModule } from './history/history.module';
 import { MembershipModule } from './membership/membership.module';
 import { IdolsModule } from './idols/idols.module';
+import { AthletesModule } from './athletes/athletes.module';
+import { SquadsModule } from './squads/squads.module';
 
 const databaseImports =
   process.env.NODE_ENV === 'test'
@@ -48,6 +50,8 @@ const databaseImports =
     MembershipModule,
     SponsorsModule,
     IdolsModule,
+    AthletesModule,
+    SquadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
