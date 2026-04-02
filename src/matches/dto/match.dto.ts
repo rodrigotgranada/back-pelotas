@@ -17,7 +17,7 @@ class MatchGoalDto {
 
 export class CreateMatchDto {
   @IsMongoId()
-  @IsNotEmpty()
+  @IsOptional()
   competitionId: string;
 
   @IsMongoId()

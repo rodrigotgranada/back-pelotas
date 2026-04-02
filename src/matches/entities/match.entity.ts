@@ -33,7 +33,7 @@ const MatchGoalSchema = SchemaFactory.createForClass(MatchGoal);
 export class MatchEntity {
   _id: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'CompetitionEntity', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'CompetitionEntity', required: false })
   competitionId: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'TeamEntity', required: true })

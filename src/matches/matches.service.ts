@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { MatchDocument, MatchEntity } from './entities/match.entity';
 import { CreateMatchDto, UpdateMatchDto } from './dto/match.dto';
 import { MatchesGateway } from './matches.gateway';
+import { ActivityLogsService } from '../logs/activity-logs.service';
 
 @Injectable()
 export class MatchesService {
@@ -11,11 +12,22 @@ export class MatchesService {
     @InjectModel(MatchEntity.name)
     private readonly matchModel: Model<MatchDocument>,
     private readonly gateway: MatchesGateway,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async create(dto: CreateMatchDto): Promise<MatchEntity> {
+  async create(dto: CreateMatchDto, adminId?: string): Promise<MatchEntity> {
     const match = new this.matchModel(dto);
     const saved = await match.save();
+    
+    await this.activityLogsService.record({
+      action: 'create',
+      entity: 'matches',
+      entityId: saved._id.toString(),
+      status: 'success',
+      actorUserId: adminId,
+      message: `Admin agendou nova partida: vs ${dto.opponentId}`,
+    });
+
     this.gateway.emitMatchUpdate(saved);
     return saved;
   }
@@ -69,39 +81,72 @@ export class MatchesService {
     return match;
   }
 
-  async update(id: string, dto: UpdateMatchDto): Promise<MatchEntity> {
+  async update(id: string, dto: UpdateMatchDto, adminId?: string): Promise<MatchEntity> {
     const match = await this.matchModel
       .findByIdAndUpdate(id, { $set: dto }, { new: true })
       .populate('competitionId')
       .populate('opponentId')
       .exec();
+    
     if (!match) {
       throw new NotFoundException(`Match with ID ${id} not found`);
     }
+
+    await this.activityLogsService.record({
+      action: 'update',
+      entity: 'matches',
+      entityId: id,
+      status: 'success',
+      actorUserId: adminId,
+      message: `Admin atualizou partida ID ${id} (Placar: ${match.homeScore}x${match.awayScore})`,
+    });
+
     this.gateway.emitMatchUpdate(match);
     return match;
   }
 
-  async finish(id: string, newsId?: string): Promise<MatchEntity> {
+  async finish(id: string, newsId?: string, adminId?: string): Promise<MatchEntity> {
     const match = await this.matchModel
       .findByIdAndUpdate(id, { $set: { status: 'FINISHED', newsId } }, { new: true })
       .populate('competitionId')
       .populate('opponentId')
       .exec();
+    
     if (!match) {
       throw new NotFoundException(`Match with ID ${id} not found`);
     }
+
+    await this.activityLogsService.record({
+      action: 'update',
+      entity: 'matches',
+      entityId: id,
+      status: 'success',
+      actorUserId: adminId,
+      message: `Admin finalizou partida ID ${id}. Resultado: ${match.homeScore}x${match.awayScore}`,
+    });
+
     this.gateway.emitMatchUpdate(match);
     return match;
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, adminId?: string): Promise<void> {
     const result = await this.matchModel
       .findByIdAndUpdate(id, { deletedAt: new Date() })
       .exec();
+    
     if (!result) {
       throw new NotFoundException(`Match with ID ${id} not found`);
     }
+
+    await this.activityLogsService.record({
+      action: 'delete',
+      entity: 'matches',
+      entityId: id,
+      status: 'success',
+      actorUserId: adminId,
+      message: `Admin removeu partida ID ${id}`,
+    });
+
     this.gateway.emitMatchUpdate({ id, deleted: true });
   }
 }

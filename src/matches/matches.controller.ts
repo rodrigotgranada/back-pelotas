@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Patch, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Patch, Query, Req } from '@nestjs/common';
 import { MatchesService } from './matches.service';
 import { CreateMatchDto, UpdateMatchDto } from './dto/match.dto';
 import { MatchEntity } from './entities/match.entity';
@@ -14,8 +14,8 @@ export class MatchesController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
-  async create(@Body() createDto: CreateMatchDto): Promise<MatchEntity> {
-    return this.matchesService.create(createDto);
+  async create(@Body() createDto: CreateMatchDto, @Req() req: any): Promise<MatchEntity> {
+    return this.matchesService.create(createDto, req.user?.id);
   }
 
   @Get()
@@ -41,21 +41,21 @@ export class MatchesController {
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
-  async update(@Param('id') id: string, @Body() updateDto: UpdateMatchDto): Promise<MatchEntity> {
-    return this.matchesService.update(id, updateDto);
+  async update(@Param('id') id: string, @Body() updateDto: UpdateMatchDto, @Req() req: any): Promise<MatchEntity> {
+    return this.matchesService.update(id, updateDto, req.user?.id);
   }
 
   @Patch(':id/finish')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
-  async finish(@Param('id') id: string, @Query('newsId') newsId?: string): Promise<MatchEntity> {
-    return this.matchesService.finish(id, newsId);
+  async finish(@Param('id') id: string, @Query('newsId') newsId: string | undefined, @Req() req: any): Promise<MatchEntity> {
+    return this.matchesService.finish(id, newsId, req.user?.id);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
-  async remove(@Param('id') id: string): Promise<void> {
-    return this.matchesService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: any): Promise<void> {
+    return this.matchesService.remove(id, req.user?.id);
   }
 }

@@ -8,6 +8,8 @@ export interface PublicSettings {
   badgeUrl: string | null;
   themePreset: string;
   defaultNewsImageUrl: string | null;
+  defaultTeamLogoUrl: string | null;
+  defaultCompetitionLogoUrl: string | null;
   isMembershipEnabled: boolean;
   isSponsorsEnabled: boolean;
   isSquadsEnabled: boolean;
@@ -36,7 +38,9 @@ export class SettingsService {
 
   async getPublicSettings(): Promise<PublicSettings> {
     const keys = [
-      'badgeUrl', 'themePreset', 'defaultNewsImageUrl', 'isMembershipEnabled', 'isSponsorsEnabled',
+      'badgeUrl', 'themePreset', 'defaultNewsImageUrl', 
+      'defaultTeamLogoUrl', 'defaultCompetitionLogoUrl',
+      'isMembershipEnabled', 'isSponsorsEnabled',
       'isSquadsEnabled', 'isNewsletterEnabled', 'isIdolsEnabled',
       'footerPhone', 'footerIsWhatsapp', 'footerEmail', 'footerAddress', 'footerMapsEmbedUrl',
       'footerSocialLinks', 'footerLinks',
@@ -73,6 +77,8 @@ export class SettingsService {
       badgeUrl: map['badgeUrl'] || null,
       themePreset: map['themePreset'] ?? 'default',
       defaultNewsImageUrl: map['defaultNewsImageUrl'] || null,
+      defaultTeamLogoUrl: map['defaultTeamLogoUrl'] || null,
+      defaultCompetitionLogoUrl: map['defaultCompetitionLogoUrl'] || null,
       isMembershipEnabled: (map['isMembershipEnabled'] ?? 'true') === 'true',
       isSponsorsEnabled: (map['isSponsorsEnabled'] ?? 'true') === 'true',
       isSquadsEnabled: (map['isSquadsEnabled'] ?? 'true') === 'true',

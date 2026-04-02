@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Req } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Express } from 'express';
@@ -19,8 +19,9 @@ export class TeamsController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
-  async create(@Body() createTeamDto: CreateTeamDto): Promise<TeamEntity> {
-    return this.teamsService.create(createTeamDto);
+  async create(@Body() createTeamDto: CreateTeamDto, @Req() req: any): Promise<TeamEntity> {
+    const adminId = req.user?.id;
+    return this.teamsService.create(createTeamDto, adminId);
   }
 
   @Get()
@@ -36,15 +37,17 @@ export class TeamsController {
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
-  async update(@Param('id') id: string, @Body() updateTeamDto: UpdateTeamDto): Promise<TeamEntity> {
-    return this.teamsService.update(id, updateTeamDto);
+  async update(@Param('id') id: string, @Body() updateTeamDto: UpdateTeamDto, @Req() req: any): Promise<TeamEntity> {
+    const adminId = req.user?.id;
+    return this.teamsService.update(id, updateTeamDto, adminId);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
-  async remove(@Param('id') id: string): Promise<void> {
-    return this.teamsService.remove(id);
+  async remove(@Param('id') id: string, @Req() req: any): Promise<void> {
+    const adminId = req.user?.id;
+    return this.teamsService.remove(id, adminId);
   }
 
   @Post('upload-image')
