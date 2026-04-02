@@ -13,6 +13,7 @@ import { RequireRoleCodes } from '../auth/authorization/require-role-codes.decor
 import { ROLE_CODES } from '../auth/authorization/role-codes';
 import { PaginatedNewsResponseDto } from './dto/paginated-news-response.dto';
 import { NewsResponseDto } from './dto/news-response.dto';
+import { CreateCategoryDto } from './dto/create-category.dto';
 
 @ApiTags('News')
 @Controller('news')
@@ -23,7 +24,7 @@ export class NewsController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
+  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN, ROLE_CODES.EDITOR)
   @ApiOperation({ summary: 'Criar notícia' })
   @ApiResponse({ status: 201, type: NewsResponseDto })
   create(@Body() createNewsDto: CreateNewsDto, @Req() req: { user?: { sub?: string } }) {
@@ -46,10 +47,30 @@ export class NewsController {
   }
 
   @Get('categories')
-  @ApiOperation({ summary: 'Buscar todas as categorias (tags) únicas ativas' })
-  @ApiResponse({ status: 200, type: [String] })
+  @ApiOperation({ summary: 'Buscar todas as categorias gerenciadas' })
+  @ApiResponse({ status: 200, type: [Object] })
   findAllCategories() {
     return this.newsService.findAllCategories();
+  }
+
+  @Post('categories')
+  @UseGuards(RolesGuard)
+  @RequireRoleCodes(ROLE_CODES.OWNER)
+  @ApiOperation({ summary: 'Criar nova categoria de notícia (Apenas Owner)' })
+  @ApiResponse({ status: 201 })
+  createCategory(@Body() createCategoryDto: CreateCategoryDto, @Req() req: { user?: { sub?: string } }) {
+    if (!req.user?.sub) throw new BadRequestException('Não autenticado');
+    return this.newsService.createCategory(createCategoryDto, req.user.sub);
+  }
+
+  @Delete('categories/:id')
+  @UseGuards(RolesGuard)
+  @RequireRoleCodes(ROLE_CODES.OWNER)
+  @ApiOperation({ summary: 'Remover categoria de notícia (Apenas Owner)' })
+  @ApiResponse({ status: 204 })
+  removeCategory(@Param('id') id: string, @Req() req: { user?: { sub?: string } }) {
+    if (!req.user?.sub) throw new BadRequestException('Não autenticado');
+    return this.newsService.deleteCategory(id, req.user.sub);
   }
 
   @Post('public-news/:slug/view')
@@ -75,7 +96,7 @@ export class NewsController {
 
   @Patch(':id')
   @UseGuards(RolesGuard)
-  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
+  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN, ROLE_CODES.EDITOR)
   @ApiOperation({ summary: 'Atualizar notícia' })
   @ApiResponse({ status: 200, type: NewsResponseDto })
   update(@Param('id') id: string, @Body() updateNewsDto: UpdateNewsDto, @Req() req: { user?: { sub?: string } }) {
@@ -85,7 +106,7 @@ export class NewsController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
+  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN, ROLE_CODES.EDITOR)
   @ApiOperation({ summary: 'Remover notícia (soft delete)' })
   @ApiResponse({ status: 204 })
   remove(@Param('id') id: string, @Req() req: { user?: { sub?: string } }) {
@@ -104,7 +125,7 @@ export class NewsController {
 
   @Post('upload-image')
   @UseGuards(RolesGuard)
-  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN)
+  @RequireRoleCodes(ROLE_CODES.OWNER, ROLE_CODES.ADMIN, ROLE_CODES.EDITOR)
   @UseInterceptors(
     FileInterceptor('image', {
       storage: memoryStorage(),

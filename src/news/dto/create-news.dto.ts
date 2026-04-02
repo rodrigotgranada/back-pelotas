@@ -22,10 +22,10 @@ export class CreateNewsDto {
   @IsEnum(['HTML', 'BLOCKS'])
   format: NewsFormat;
 
-  @ApiPropertyOptional({ description: 'URL da imagem de capa' })
+  @ApiPropertyOptional({ description: 'URL da imagem de capa', nullable: true })
   @IsOptional()
   @IsString()
-  coverImageUrl?: string;
+  coverImageUrl?: string | null;
 
   @ApiPropertyOptional({ description: 'Status inicial', enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'], default: 'DRAFT' })
   @IsOptional()
@@ -45,6 +45,11 @@ export class CreateNewsDto {
   @IsArray()
   @IsString({ each: true })
   categories?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()

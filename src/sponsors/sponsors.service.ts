@@ -36,6 +36,10 @@ export class SponsorsService {
     const query: any = { deletedAt: null };
     if (onlyActive) {
       query.isActive = true;
+      query.$or = [
+        { expirationDate: null },
+        { expirationDate: { $gt: new Date() } },
+      ];
     }
     return this.sponsorModel.find(query).sort({ order: 1, createdAt: -1 }).lean();
   }

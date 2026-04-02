@@ -10,6 +10,10 @@ export interface PublicSettings {
   defaultNewsImageUrl: string | null;
   isMembershipEnabled: boolean;
   isSponsorsEnabled: boolean;
+  isSquadsEnabled: boolean;
+  isNewsletterEnabled: boolean;
+  isIdolsEnabled: boolean;
+  isMatchesEnabled: boolean;
 
   // Footer / Contacts
   footerPhone?: string;
@@ -33,10 +37,11 @@ export class SettingsService {
   async getPublicSettings(): Promise<PublicSettings> {
     const keys = [
       'badgeUrl', 'themePreset', 'defaultNewsImageUrl', 'isMembershipEnabled', 'isSponsorsEnabled',
+      'isSquadsEnabled', 'isNewsletterEnabled', 'isIdolsEnabled',
       'footerPhone', 'footerIsWhatsapp', 'footerEmail', 'footerAddress', 'footerMapsEmbedUrl',
       'footerSocialLinks', 'footerLinks',
       'footerFacebook', 'footerInstagram', 'footerTwitter', 'footerYoutube', 'footerTiktok',
-      'footerDevName', 'footerDevUrl'
+      'footerDevName', 'footerDevUrl', 'isMatchesEnabled'
     ];
 
     const settings = await this.settingModel.find({
@@ -65,11 +70,15 @@ export class SettingsService {
     }
 
     return {
-      badgeUrl: map['badgeUrl'] ?? null,
+      badgeUrl: map['badgeUrl'] || null,
       themePreset: map['themePreset'] ?? 'default',
-      defaultNewsImageUrl: map['defaultNewsImageUrl'] ?? null,
+      defaultNewsImageUrl: map['defaultNewsImageUrl'] || null,
       isMembershipEnabled: (map['isMembershipEnabled'] ?? 'true') === 'true',
       isSponsorsEnabled: (map['isSponsorsEnabled'] ?? 'true') === 'true',
+      isSquadsEnabled: (map['isSquadsEnabled'] ?? 'true') === 'true',
+      isNewsletterEnabled: (map['isNewsletterEnabled'] ?? 'true') === 'true',
+      isIdolsEnabled: (map['isIdolsEnabled'] ?? 'true') === 'true',
+      isMatchesEnabled: (map['isMatchesEnabled'] ?? 'true') === 'true',
       
       footerPhone: map['footerPhone'] ?? '',
       footerIsWhatsapp: (map['footerIsWhatsapp'] ?? 'false') === 'true',

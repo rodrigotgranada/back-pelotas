@@ -1,9 +1,10 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Delete, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { ROLE_CODES } from '../auth/authorization/role-codes';
@@ -37,5 +38,14 @@ export class LogsController {
   @ApiOkResponse({ type: ActivityLogEntity, isArray: true })
   findAll(@Query() query: QueryActivityLogsDto): Promise<ActivityLogEntity[]> {
     return this.activityLogsService.findAll(query);
+  }
+
+  @Delete()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes(ROLE_CODES.OWNER)
+  @ApiOperation({ summary: 'Limpar todo o historico de logs (Apenas Owner)' })
+  @ApiResponse({ status: 204, description: 'Historico limpo com sucesso' })
+  async clearAll(): Promise<void> {
+    await this.activityLogsService.clearAll();
   }
 }

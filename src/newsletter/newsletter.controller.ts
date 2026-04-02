@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { NewsletterService } from './newsletter.service';
 import { SubscribeDto } from './dto/subscribe.dto';
@@ -25,7 +25,16 @@ export class NewsletterController {
   @RequireRoleCodes(ROLE_CODES.ADMIN, ROLE_CODES.OWNER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar inscritos (Apenas Admin)' })
-  findAll() {
-    return this.newsletterService.findAll();
+  findAll(@Query() query: { page?: number; limit?: number; search?: string }) {
+    return this.newsletterService.findAll(query);
+  }
+
+  @Get('stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoleCodes(ROLE_CODES.ADMIN, ROLE_CODES.OWNER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Estatísticas de inscritos' })
+  getStats() {
+    return this.newsletterService.getStats();
   }
 }

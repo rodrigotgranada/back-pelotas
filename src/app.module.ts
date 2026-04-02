@@ -18,6 +18,9 @@ import { MembershipModule } from './membership/membership.module';
 import { IdolsModule } from './idols/idols.module';
 import { AthletesModule } from './athletes/athletes.module';
 import { SquadsModule } from './squads/squads.module';
+import { TeamsModule } from './teams/teams.module';
+import { CompetitionsModule } from './competitions/competitions.module';
+import { MatchesModule } from './matches/matches.module';
 
 const databaseImports =
   process.env.NODE_ENV === 'test'
@@ -52,6 +55,9 @@ const databaseImports =
     IdolsModule,
     AthletesModule,
     SquadsModule,
+    TeamsModule,
+    CompetitionsModule,
+    MatchesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

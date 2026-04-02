@@ -12,6 +12,11 @@ export class CreateHistoryDto {
   @IsOptional()
   slug?: string;
 
+  @ApiPropertyOptional({ description: 'Ano do registro histórico' })
+  @IsString()
+  @IsOptional()
+  year?: string;
+
   @ApiProperty({ description: 'Conteúdo da seção (JSON Editor.js ou HTML)' })
   @IsNotEmpty()
   content: any;

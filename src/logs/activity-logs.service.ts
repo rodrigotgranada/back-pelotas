@@ -69,6 +69,10 @@ export class ActivityLogsService {
       .lean();
   }
 
+  async clearAll(): Promise<void> {
+    await this.activityLogModel.deleteMany({}).exec();
+  }
+
   private toObjectIdOrNull(id?: string): Types.ObjectId | null {
     if (!id || !Types.ObjectId.isValid(id)) {
       return null;

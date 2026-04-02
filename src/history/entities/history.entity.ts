@@ -21,6 +21,9 @@ export class HistoryEntity {
   @Prop({ required: true, trim: true })
   title: string;
 
+  @Prop({ type: String, default: '' })
+  year: string;
+
   @Prop({ required: true, trim: true, unique: true, lowercase: true })
   slug: string;
 

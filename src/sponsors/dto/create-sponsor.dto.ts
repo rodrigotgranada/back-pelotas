@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsBoolean, IsDateString, IsInt, IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class CreateSponsorDto {
   @ApiProperty({ description: 'Nome do patrocinador' })
@@ -33,4 +33,9 @@ export class CreateSponsorDto {
   @IsInt()
   @IsOptional()
   order?: number;
+
+  @ApiPropertyOptional({ description: 'Data de expiração do contrato' })
+  @IsDateString()
+  @IsOptional()
+  expirationDate?: string;
 }

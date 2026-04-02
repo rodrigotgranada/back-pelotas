@@ -52,6 +52,9 @@ export class NewsEntity {
   @Prop({ type: [String], default: [] })
   categories: string[];
 
+  @Prop({ type: [String], default: [] })
+  tags: string[];
+
   @Prop({ type: Boolean, default: true })
   allowComments: boolean;
 

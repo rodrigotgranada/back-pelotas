@@ -39,6 +39,9 @@ export class SponsorEntity {
   updatedBy?: Types.ObjectId | null;
 
   @Prop({ type: Date, default: null })
+  expirationDate?: Date | null;
+
+  @Prop({ type: Date, default: null })
   deletedAt?: Date | null;
 
   @Prop({ type: Types.ObjectId, ref: 'UserEntity', default: null })

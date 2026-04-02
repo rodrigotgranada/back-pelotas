@@ -18,7 +18,7 @@ export class AthletesController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @RequireRoleCodes(ROLE_CODES.ADMIN, ROLE_CODES.OWNER)
+  @RequireRoleCodes(ROLE_CODES.ADMIN, ROLE_CODES.OWNER, ROLE_CODES.EDITOR)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Criar um novo atleta/membro da comissão' })
   create(@Body() createAthleteDto: CreateAthleteDto, @Req() req: any) {
@@ -40,7 +40,7 @@ export class AthletesController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @RequireRoleCodes(ROLE_CODES.ADMIN, ROLE_CODES.OWNER)
+  @RequireRoleCodes(ROLE_CODES.ADMIN, ROLE_CODES.OWNER, ROLE_CODES.EDITOR)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualizar um atleta existente' })
   update(@Param('id') id: string, @Body() updateAthleteDto: UpdateAthleteDto, @Req() req: any) {
@@ -49,7 +49,7 @@ export class AthletesController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @RequireRoleCodes(ROLE_CODES.ADMIN, ROLE_CODES.OWNER)
+  @RequireRoleCodes(ROLE_CODES.ADMIN, ROLE_CODES.OWNER, ROLE_CODES.EDITOR)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Remover um atleta (soft delete)' })
   remove(@Param('id') id: string, @Req() req: any) {
@@ -58,7 +58,7 @@ export class AthletesController {
 
   @Post('upload-image')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @RequireRoleCodes(ROLE_CODES.ADMIN, ROLE_CODES.OWNER)
+  @RequireRoleCodes(ROLE_CODES.ADMIN, ROLE_CODES.OWNER, ROLE_CODES.EDITOR)
   @ApiBearerAuth()
   @UseInterceptors(
     FileInterceptor('image', {

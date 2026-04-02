@@ -13,6 +13,8 @@ import { CommentDocument, CommentEntity, CommentStatus } from './entities/commen
 import { NewsLikeDocument, NewsLikeEntity } from './entities/news-like.entity';
 import { BadRequestException } from '@nestjs/common';
 import { ActivityLogsService } from '../logs/activity-logs.service';
+import { NewsCategoryDocument, NewsCategoryEntity } from './entities/news-category.entity';
+import { CreateCategoryDto } from './dto/create-category.dto';
 
 @Injectable()
 export class NewsService {
@@ -23,6 +25,8 @@ export class NewsService {
     private readonly commentModel: Model<CommentDocument>,
     @InjectModel(NewsLikeEntity.name)
     private readonly newsLikeModel: Model<NewsLikeDocument>,
+    @InjectModel(NewsCategoryEntity.name)
+    private readonly categoryModel: Model<NewsCategoryDocument>,
     private readonly uploadsService: UploadsService,
     private readonly activityLogsService: ActivityLogsService,
   ) {}
@@ -213,9 +217,63 @@ export class NewsService {
     await this.newsModel.updateOne(filter, { $inc: { views: 1 } }).exec();
   }
 
-  async findAllCategories(): Promise<string[]> {
-    const categories = await this.newsModel.distinct('categories', { deletedAt: null }).exec();
-    return categories.filter(c => c && c.trim().length > 0).sort();
+  async findAllCategories(): Promise<any[]> {
+    const categories = await this.categoryModel.find({ isActive: true }).sort({ name: 1 }).exec();
+    if (categories.length === 0) {
+      // Fallback to legacy behavior if no categories are managed yet
+      const distinct = await this.newsModel.distinct('categories', { deletedAt: null }).exec();
+      return distinct.filter(c => c && c.trim().length > 0).sort().map(name => ({
+        name,
+        slug: name.toLowerCase().replace(/ /g, '-').replace(/(^-|-$)+/g, ""),
+        isActive: true
+      }));
+    }
+    return categories.map(c => ({
+      id: c._id.toHexString(),
+      name: c.name,
+      slug: c.slug,
+      isActive: c.isActive,
+      description: c.description
+    }));
+  }
+
+  async createCategory(dto: CreateCategoryDto, actorId: string): Promise<any> {
+    const slug = dto.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+    
+    const existing = await this.categoryModel.findOne({ $or: [{ name: dto.name }, { slug }] }).exec();
+    if (existing) throw new BadRequestException('Categoria já existe com este nome ou slug');
+
+    const cat = await this.categoryModel.create({
+      ...dto,
+      slug
+    });
+
+    await this.activityLogsService.record({
+      action: 'news.category.create',
+      entity: 'news-category',
+      entityId: cat._id.toHexString(),
+      status: 'success',
+      actorUserId: actorId,
+      message: `Categoria de notícia criada: ${dto.name}`,
+      flags: ['news', 'category', 'create'],
+    });
+
+    return cat;
+  }
+
+  async deleteCategory(id: string, actorId: string): Promise<void> {
+    const cat = await this.categoryModel.findByIdAndDelete(id).exec();
+    if (!cat) throw new NotFoundException('Categoria não encontrada');
+
+    await this.activityLogsService.record({
+      action: 'news.category.delete',
+      entity: 'news-category',
+      entityId: id,
+      status: 'success',
+      actorUserId: actorId,
+      message: `Categoria de notícia removida: ${cat.name}`,
+      flags: ['news', 'category', 'delete'],
+    });
   }
 
   async toggleLike(slugOrId: string, userId: string): Promise<{ liked: boolean; totalLikes: number }> {
@@ -325,6 +383,9 @@ export class NewsService {
     }
 
     Object.assign(news, updateNewsDto);
+    if (updateNewsDto.coverImageUrl === null) {
+      news.coverImageStorageKey = null;
+    }
     news.updatedBy = new Types.ObjectId(updatedBy);
 
     const savedNews = await news.save();
