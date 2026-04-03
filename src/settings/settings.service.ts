@@ -27,6 +27,7 @@ export interface PublicSettings {
   footerLinks?: string; // JSON string associated with the footer links
   footerDevName?: string;
   footerDevUrl?: string;
+  termsOfConduct?: string;
 }
 
 @Injectable()
@@ -45,7 +46,7 @@ export class SettingsService {
       'footerPhone', 'footerIsWhatsapp', 'footerEmail', 'footerAddress', 'footerMapsEmbedUrl',
       'footerSocialLinks', 'footerLinks',
       'footerFacebook', 'footerInstagram', 'footerTwitter', 'footerYoutube', 'footerTiktok',
-      'footerDevName', 'footerDevUrl', 'isMatchesEnabled'
+      'footerDevName', 'footerDevUrl', 'isMatchesEnabled', 'termsOfConduct'
     ];
 
     const settings = await this.settingModel.find({
@@ -95,6 +96,7 @@ export class SettingsService {
       footerLinks: map['footerLinks'] ?? '[]',
       footerDevName: map['footerDevName'] ?? 'Rodrigo Granada',
       footerDevUrl: map['footerDevUrl'] ?? 'https://www.linkedin.com/in/rtgranada-desenvolvedor/',
+      termsOfConduct: map['termsOfConduct'] ?? '',
     };
   }
 

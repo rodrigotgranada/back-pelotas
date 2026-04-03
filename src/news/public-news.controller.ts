@@ -6,6 +6,7 @@ import { PaginatedNewsResponseDto } from './dto/paginated-news-response.dto';
 import { NewsResponseDto } from './dto/news-response.dto';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Request } from 'express';
 
 @ApiTags('Public News')
 @Controller('public-news')
@@ -72,5 +73,15 @@ export class PublicNewsController {
     if (!req.user?.sub) throw new BadRequestException('Não autenticado');
     if (!content || content.trim().length === 0) throw new BadRequestException('Comentário vazio');
     return this.newsService.addComment(slug, req.user.sub, content);
+  }
+
+  @Post(':slug/view')
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({ summary: 'Incrementar visualização de notícia pública' })
+  @ApiResponse({ status: 200 })
+  incrementView(@Param('slug') slug: string, @Req() req: any) {
+    // Identificador único: Prioriza ID do usuário se logado, senão usa o IP
+    const identifier = req.user?.sub ? `user:${req.user.sub}` : `ip:${req.ip || req.connection.remoteAddress}`;
+    return this.newsService.incrementViewCount(slug, identifier);
   }
 }

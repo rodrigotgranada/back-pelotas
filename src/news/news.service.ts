@@ -14,6 +14,7 @@ import { NewsLikeDocument, NewsLikeEntity } from './entities/news-like.entity';
 import { BadRequestException } from '@nestjs/common';
 import { ActivityLogsService } from '../logs/activity-logs.service';
 import { NewsCategoryDocument, NewsCategoryEntity } from './entities/news-category.entity';
+import { NewsViewTraceDocument, NewsViewTraceEntity } from './entities/news-view-trace.entity';
 import { CreateCategoryDto } from './dto/create-category.dto';
 
 @Injectable()
@@ -27,6 +28,8 @@ export class NewsService {
     private readonly newsLikeModel: Model<NewsLikeDocument>,
     @InjectModel(NewsCategoryEntity.name)
     private readonly categoryModel: Model<NewsCategoryDocument>,
+    @InjectModel(NewsViewTraceEntity.name)
+    private readonly newsViewTraceModel: Model<NewsViewTraceDocument>,
     private readonly uploadsService: UploadsService,
     private readonly activityLogsService: ActivityLogsService,
   ) {}
@@ -208,13 +211,27 @@ export class NewsService {
     return related.map(item => new NewsResponseDto(item));
   }
 
-  async incrementViewCount(slugOrId: string): Promise<void> {
+  async incrementViewCount(slugOrId: string, identifier: string): Promise<void> {
     let filter: any = { slug: slugOrId, deletedAt: null };
     if (Types.ObjectId.isValid(slugOrId)) {
       filter = { $or: [{ slug: slugOrId }, { _id: new Types.ObjectId(slugOrId) }], deletedAt: null };
     }
-    // High-performance atomic increment instead of load-and-save cycle
-    await this.newsModel.updateOne(filter, { $inc: { views: 1 } }).exec();
+
+    const news = await this.newsModel.findOne(filter).select('_id').exec();
+    if (!news) return;
+
+    try {
+      // Tenta criar o rastro. O índice composto (newsId + identifier) único impedirá duplicidade em 24h
+      await this.newsViewTraceModel.create({
+        newsId: news._id,
+        identifier,
+      });
+
+      // Se o rastro foi criado com sucesso, incrementa atômico no contador
+      await this.newsModel.updateOne({ _id: news._id }, { $inc: { views: 1 } }).exec();
+    } catch (e) {
+      // Silencia erro de duplicidade: significa que o rastro já existe (visualização recente)
+    }
   }
 
   async findAllCategories(): Promise<any[]> {

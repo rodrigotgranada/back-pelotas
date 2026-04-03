@@ -73,13 +73,6 @@ export class NewsController {
     return this.newsService.deleteCategory(id, req.user.sub);
   }
 
-  @Post('public-news/:slug/view')
-  @ApiOperation({ summary: 'Incrementar visualização de notícia pública' })
-  @ApiResponse({ status: 200, type: NewsResponseDto })
-  incrementView(@Param('slug') slug: string) {
-    return this.newsService.incrementViewCount(slug);
-  }
-
   @Get('public-news/:slug')
   @ApiOperation({ summary: 'Buscar notícia pública por slug' })
   @ApiResponse({ status: 200, type: NewsResponseDto })

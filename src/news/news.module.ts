@@ -7,6 +7,7 @@ import { NewsEntity, NewsSchema } from './entities/news.entity';
 import { NewsLikeEntity, NewsLikeSchema } from './entities/news-like.entity';
 import { CommentEntity, CommentSchema } from './entities/comment.entity';
 import { NewsCategoryEntity, NewsCategorySchema } from './entities/news-category.entity';
+import { NewsViewTraceEntity, NewsViewTraceSchema } from './entities/news-view-trace.entity';
 import { UploadsModule } from '../uploads/uploads.module';
 import { LogsModule } from '../logs/logs.module';
 
@@ -17,6 +18,7 @@ import { LogsModule } from '../logs/logs.module';
       { name: NewsLikeEntity.name, schema: NewsLikeSchema },
       { name: CommentEntity.name, schema: CommentSchema },
       { name: NewsCategoryEntity.name, schema: NewsCategorySchema },
+      { name: NewsViewTraceEntity.name, schema: NewsViewTraceSchema },
     ]),
     UploadsModule,
     LogsModule,
