@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, BadRequestException, NotFoundException, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Express } from 'express';
@@ -11,14 +11,16 @@ import { NewsResponseDto } from './dto/news-response.dto';
 import { UploadsService } from '../uploads/uploads.service';
 import { CommentDocument, CommentEntity, CommentStatus } from './entities/comment.entity';
 import { NewsLikeDocument, NewsLikeEntity } from './entities/news-like.entity';
-import { BadRequestException } from '@nestjs/common';
 import { ActivityLogsService } from '../logs/activity-logs.service';
 import { NewsCategoryDocument, NewsCategoryEntity } from './entities/news-category.entity';
 import { NewsViewTraceDocument, NewsViewTraceEntity } from './entities/news-view-trace.entity';
+import { UserDocument, UserEntity } from '../users/entities/user.entity';
+import { ROLE_CODES } from '../auth/authorization/role-codes';
 import { CreateCategoryDto } from './dto/create-category.dto';
 
 @Injectable()
-export class NewsService {
+export class NewsService implements OnModuleInit {
+  private readonly logger = new Logger(NewsService.name);
   constructor(
     @InjectModel(NewsEntity.name)
     private readonly newsModel: Model<NewsDocument>,
@@ -30,9 +32,41 @@ export class NewsService {
     private readonly categoryModel: Model<NewsCategoryDocument>,
     @InjectModel(NewsViewTraceEntity.name)
     private readonly newsViewTraceModel: Model<NewsViewTraceDocument>,
+    @InjectModel(UserEntity.name)
+    private readonly userModel: Model<UserDocument>,
     private readonly uploadsService: UploadsService,
     private readonly activityLogsService: ActivityLogsService,
   ) {}
+
+  async onModuleInit() {
+    this.logger.log('🐺 Iniciando sincronização do faro inteligente da Alcateia...');
+    try {
+      const newsWithoutSearchFields = await this.newsModel.find({
+        $or: [
+          { searchTitle: { $exists: false } },
+          { searchTitle: '' },
+          { searchSubtitle: { $exists: false } },
+        ],
+        deletedAt: null
+      }).exec();
+
+      if (newsWithoutSearchFields.length > 0) {
+        this.logger.log(`🐺 Sincronizando ${newsWithoutSearchFields.length} matérias do histórico...`);
+        
+        for (const news of newsWithoutSearchFields) {
+          news.searchTitle = this.normalizeForSearch(news.title);
+          news.searchSubtitle = this.normalizeForSearch(news.subtitle || '');
+          await news.save();
+        }
+        
+        this.logger.log('🐺 Sincronização concluída! A Alcateia está com o rastro afiado.');
+      } else {
+        this.logger.log('🐺 Faro já está em dia! Nenhuma sincronização necessária.');
+      }
+    } catch (error) {
+      this.logger.error('❌ Erro ao sincronizar histórico de notícias:', error);
+    }
+  }
 
   private async generateSlug(title: string): Promise<string> {
     const baseSlug = title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
@@ -46,6 +80,14 @@ export class NewsService {
 
     return slug;
   }
+  
+  private normalizeForSearch(text: string): string {
+    if (!text) return '';
+    return text.normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
 
   async create(createNewsDto: CreateNewsDto, authorId: string): Promise<NewsResponseDto> {
     const slug = await this.generateSlug(createNewsDto.title);
@@ -53,6 +95,8 @@ export class NewsService {
     const news = new this.newsModel({
       ...createNewsDto,
       slug,
+      searchTitle: this.normalizeForSearch(createNewsDto.title),
+      searchSubtitle: this.normalizeForSearch(createNewsDto.subtitle || ''),
       authorId: new Types.ObjectId(authorId),
       createdBy: new Types.ObjectId(authorId),
     });
@@ -84,9 +128,10 @@ export class NewsService {
     }
 
     if (query.search) {
+      const normalizedQuery = this.normalizeForSearch(query.search);
       filter.$or = [
-        { title: { $regex: query.search, $options: 'i' } },
-        { subtitle: { $regex: query.search, $options: 'i' } },
+        { searchTitle: { $regex: normalizedQuery, $options: 'i' } },
+        { searchSubtitle: { $regex: normalizedQuery, $options: 'i' } },
       ];
     }
 
@@ -122,9 +167,10 @@ export class NewsService {
     }
 
     if (query.search) {
+      const normalizedQuery = this.normalizeForSearch(query.search);
       filter.$or = [
-        { title: { $regex: query.search, $options: 'i' } },
-        { subtitle: { $regex: query.search, $options: 'i' } },
+        { searchTitle: { $regex: normalizedQuery, $options: 'i' } },
+        { searchSubtitle: { $regex: normalizedQuery, $options: 'i' } },
       ];
     }
 
@@ -337,13 +383,29 @@ export class NewsService {
   }
 
   async addComment(slugOrId: string, userId: string, content: string) {
+    // 1. Verificar se o usuário existe e tem permissão
+    const user = await this.userModel.findById(userId).populate('roleId').exec();
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    
+    // Trava de moderação individual
+    if (user.canComment === false) {
+      throw new ForbiddenException(`Você está impedido de comentar. Motivo: ${user.commentBlockReason || 'Não especificado'}`);
+    }
+
+    // Trava de Exclusividade: Apenas Sócios (ou Admins/Owners)
+    const roleCode = (user.roleId as any)?.code;
+    const allowedRoles = [ROLE_CODES.SOCIO, ROLE_CODES.ADMIN, ROLE_CODES.OWNER, ROLE_CODES.EDITOR];
+    if (!allowedRoles.includes(roleCode)) {
+      throw new ForbiddenException('A resenha nos comentários é exclusiva para Sócios da Alcateia!');
+    }
+
     let filter: any = { slug: slugOrId, deletedAt: null };
     if (Types.ObjectId.isValid(slugOrId)) {
       filter = { $or: [{ slug: slugOrId }, { _id: new Types.ObjectId(slugOrId) }], deletedAt: null };
     }
-    const news = await this.newsModel.findOne(filter).exec();
+    const news = await this.newsModel.findOne(filter, { _id: 1, allowComments: 1 }).exec();
     if (!news) throw new NotFoundException('Notícia não encontrada');
-    if (!news.allowComments) throw new BadRequestException('Comentários estão desativados para esta matéria');
+    if (!news.allowComments) throw new BadRequestException('Comentários desativados para esta matéria');
 
     const comment = await this.commentModel.create({
       newsId: news._id,
@@ -352,20 +414,20 @@ export class NewsService {
       status: 'APPROVED'
     });
     
-    // To return the formatted comment
-    const populated = await comment.populate('authorId', 'firstName lastName');
+    const populated = await comment.populate('authorId', 'firstName lastName photoUrl');
     return {
       id: populated._id.toHexString(),
       content: populated.content,
       createdAt: populated.createdAt,
       author: populated.authorId ? {
         id: (populated.authorId as any)._id.toHexString(),
-        name: `${(populated.authorId as any).firstName} ${(populated.authorId as any).lastName || ''}`.trim()
+        name: `${(populated.authorId as any).firstName} ${(populated.authorId as any).lastName || ''}`.trim(),
+        photoUrl: (populated.authorId as any).photoUrl
       } : null
     };
   }
 
-  async getComments(slugOrId: string) {
+  async getComments(slugOrId: string, currentUserId?: string) {
     let filter: any = { slug: slugOrId, deletedAt: null };
     if (Types.ObjectId.isValid(slugOrId)) {
       filter = { $or: [{ slug: slugOrId }, { _id: new Types.ObjectId(slugOrId) }], deletedAt: null };
@@ -375,18 +437,60 @@ export class NewsService {
 
     const comments = await this.commentModel.find({ newsId: news._id, status: 'APPROVED' })
       .sort({ createdAt: -1 })
-      .populate('authorId', 'firstName lastName')
+      .populate('authorId', 'firstName lastName photoUrl')
       .exec();
       
-    return comments.map(c => ({
-      id: c._id.toHexString(),
-      content: c.content,
-      createdAt: c.createdAt,
-      author: c.authorId ? {
-        id: (c.authorId as any)._id.toHexString(),
-        name: `${(c.authorId as any).firstName} ${(c.authorId as any).lastName || ''}`.trim()
-      } : null
-    }));
+    return comments.map(c => {
+      const isAuthor = currentUserId && c.authorId?.toHexString() === currentUserId;
+      
+      // Se moderado, esconde conteúdo original
+      let displayContent = c.content;
+      let moderationInfo: string | null = null;
+
+      if (c.isModerated) {
+        displayContent = 'Este comentário foi moderado pela administração.';
+        if (isAuthor && c.moderationReason) {
+          moderationInfo = `Motivo: ${c.moderationReason}`;
+        }
+      }
+
+      return {
+        id: c._id.toHexString(),
+        content: displayContent,
+        moderationInfo,
+        isModerated: c.isModerated,
+        createdAt: c.createdAt,
+        author: c.authorId ? {
+          id: (c.authorId as any)._id.toHexString(),
+          name: `${(c.authorId as any).firstName} ${(c.authorId as any).lastName || ''}`.trim(),
+          photoUrl: (c.authorId as any).photoUrl
+        } : null
+      };
+    });
+  }
+
+  async moderateComment(commentId: string, reason: string, adminId: string) {
+    const comment = await this.commentModel.findById(commentId);
+    if (!comment) throw new NotFoundException('Comentário não encontrado');
+
+    comment.isModerated = true;
+    comment.moderationReason = reason;
+    comment.moderatedAt = new Date();
+    comment.moderatedBy = new Types.ObjectId(adminId);
+    
+    await comment.save();
+
+    await this.activityLogsService.record({
+      action: 'news.comment.moderate',
+      entity: 'comment',
+      entityId: commentId,
+      status: 'success',
+      actorUserId: adminId,
+      message: `Comentário moderado. Motivo: ${reason}`,
+      flags: ['news', 'comment', 'moderation', 'success'],
+    });
+
+    return { success: true };
   }
 
   async update(id: string, updateNewsDto: UpdateNewsDto, updatedBy: string): Promise<NewsResponseDto> {
@@ -400,8 +504,16 @@ export class NewsService {
     }
 
     Object.assign(news, updateNewsDto);
+    
+    if (updateNewsDto.title) {
+        news.searchTitle = this.normalizeForSearch(updateNewsDto.title);
+    }
+    if (updateNewsDto.subtitle !== undefined) {
+        news.searchSubtitle = this.normalizeForSearch(updateNewsDto.subtitle || '');
+    }
+
     if (updateNewsDto.coverImageUrl === null) {
-      news.coverImageStorageKey = null;
+      (news as any).coverImageStorageKey = null;
     }
     news.updatedBy = new Types.ObjectId(updatedBy);
 

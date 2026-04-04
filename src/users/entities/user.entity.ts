@@ -244,6 +244,12 @@ export class UserEntity {
 
   @Prop({ type: PasswordResetRequestDataSchema, default: null })
   passwordResetRequest?: PasswordResetRequestData | null;
+
+  @Prop({ type: Boolean, default: true })
+  canComment: boolean;
+
+  @Prop({ type: String, default: null })
+  commentBlockReason?: string | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserEntity);

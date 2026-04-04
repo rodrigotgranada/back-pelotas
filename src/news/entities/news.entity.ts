@@ -22,6 +22,12 @@ export class NewsEntity {
   @Prop({ type: String, trim: true, default: null })
   subtitle?: string | null;
 
+  @Prop({ type: String, index: true, default: '' })
+  searchTitle: string;
+
+  @Prop({ type: String, index: true, default: '' })
+  searchSubtitle: string;
+
   @Prop({ required: true, type: MongooseSchema.Types.Mixed })
   content: string | Record<string, any>;
 

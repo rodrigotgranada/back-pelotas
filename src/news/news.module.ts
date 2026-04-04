@@ -10,6 +10,7 @@ import { NewsCategoryEntity, NewsCategorySchema } from './entities/news-category
 import { NewsViewTraceEntity, NewsViewTraceSchema } from './entities/news-view-trace.entity';
 import { UploadsModule } from '../uploads/uploads.module';
 import { LogsModule } from '../logs/logs.module';
+import { UserEntity, UserSchema } from '../users/entities/user.entity';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { LogsModule } from '../logs/logs.module';
       { name: CommentEntity.name, schema: CommentSchema },
       { name: NewsCategoryEntity.name, schema: NewsCategorySchema },
       { name: NewsViewTraceEntity.name, schema: NewsViewTraceSchema },
+      { name: UserEntity.name, schema: UserSchema },
     ]),
     UploadsModule,
     LogsModule,

@@ -13,6 +13,13 @@ import { Request } from 'express';
 export class PublicNewsController {
   constructor(private readonly newsService: NewsService) {}
 
+  @Get('categories')
+  @ApiOperation({ summary: 'Listar categorias públicas para filtros' })
+  @ApiResponse({ status: 200, type: [Object] })
+  findAllCategories() {
+    return this.newsService.findAllCategories();
+  }
+
   @Get()
   @ApiOperation({ summary: 'Listar notícias publicadas (Site Público)' })
   @ApiResponse({ status: 200, type: PaginatedNewsResponseDto })
@@ -56,9 +63,10 @@ export class PublicNewsController {
   }
 
   @Get(':slug/comments')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Listar comentários de uma matéria' })
-  getComments(@Param('slug') slug: string) {
-    return this.newsService.getComments(slug);
+  getComments(@Param('slug') slug: string, @Req() req: any) {
+    return this.newsService.getComments(slug, req.user?.sub);
   }
 
   @Post(':slug/comments')

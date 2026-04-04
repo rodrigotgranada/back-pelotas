@@ -21,6 +21,18 @@ export class CommentEntity {
   @Prop({ type: String, enum: ['APPROVED', 'PENDING', 'REJECTED'], default: 'APPROVED', index: true })
   status: CommentStatus;
 
+  @Prop({ type: Boolean, default: false })
+  isModerated: boolean;
+
+  @Prop({ type: String, default: null })
+  moderationReason?: string | null;
+
+  @Prop({ type: Date, default: null })
+  moderatedAt?: Date | null;
+
+  @Prop({ type: Types.ObjectId, ref: 'UserEntity', default: null })
+  moderatedBy?: Types.ObjectId | null;
+
   createdAt: Date;
   updatedAt: Date;
 }

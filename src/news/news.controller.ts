@@ -137,4 +137,15 @@ export class NewsController {
     if (!file) throw new BadRequestException('Imagem não enviada');
     return this.newsService.uploadImage(file);
   }
+
+  @Post('comments/:id/moderate')
+  @ApiOperation({ summary: 'Moderar um comentário (justificativa de deleção/alteração)' })
+  moderateComment(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+    @Req() req: any
+  ) {
+    if (!reason || reason.trim().length === 0) throw new BadRequestException('Justificativa é obrigatória');
+    return this.newsService.moderateComment(id, reason, req.user.sub);
+  }
 }
