@@ -27,6 +27,8 @@ export class ActivityLogsService {
   ) {}
 
   async record(input: RecordActivityLogInput): Promise<void> {
+    const friendlyMessage = input.message || this.getFriendlyAction(input.action);
+
     await this.activityLogModel.create({
       action: input.action,
       entity: input.entity,
@@ -34,13 +36,37 @@ export class ActivityLogsService {
       status: input.status,
       actorUserId: this.toObjectIdOrNull(input.actorUserId),
       actorEmail: input.actorEmail?.toLowerCase() ?? null,
-      message: input.message ?? null,
+      message: friendlyMessage ?? null,
       flags: input.flags ?? [],
       metadata: input.metadata ?? {},
       ipAddress: input.ipAddress ?? null,
       userAgent: input.userAgent ?? null,
       correlationId: input.correlationId ?? null,
     });
+  }
+
+  private getFriendlyAction(action: string): string {
+    const dictionary: Record<string, string> = {
+      'USER.UPDATE': 'Usuário modificado',
+      'USER.PHOTO.UPDATE': 'Foto de perfil atualizada',
+      'USER.CREATE': 'Novo usuário criado',
+      'USER.DELETE': 'Usuário removido da alcateia',
+      'NEWS.CREATE': 'Nova matéria publicada',
+      'NEWS.UPDATE': 'Matéria editada',
+      'NEWS.DELETE': 'Matéria removida',
+      'MATCH.CREATE': 'Próxima batalha agendada',
+      'MATCH.UPDATE': 'Dados da batalha alterados',
+      'MATCH.FINISH': 'Batalha encerrada',
+      'AUTH.LOGIN': 'Entrada no comando (Login)',
+      'AUTH.LOGOUT': 'Saída do comando (Logout)',
+      'UPDATE': 'Sistema atualizado',
+      'INTEREST.CREATED': 'Nova intenção de sócio recebida',
+      'INTEREST.READ': 'Interesse de sócio visualizado',
+      'SPONSOR.CREATE': 'Novo patrocinador adicionado',
+      'IDOL.CREATE': 'Novo ídolo imortalizado',
+    };
+
+    return dictionary[action] || action;
   }
 
   async findAll(query: QueryActivityLogsDto): Promise<ActivityLogEntity[]> {

@@ -169,7 +169,7 @@ export class UserEntity {
   @Prop({ required: true, select: false })
   password: string;
 
-  @Prop({ type: Types.ObjectId, default: null })
+  @Prop({ type: Types.ObjectId, ref: 'RoleEntity', default: null })
   roleId?: Types.ObjectId | null;
 
   @Prop({ type: String, default: null })
