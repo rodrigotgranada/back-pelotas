@@ -441,7 +441,9 @@ export class NewsService implements OnModuleInit {
       .exec();
       
     return comments.map(c => {
-      const isAuthor = currentUserId && c.authorId?.toHexString() === currentUserId;
+      const authorIdObj = c.authorId as any;
+      const authorIdStr = authorIdObj ? (authorIdObj._id ? authorIdObj._id.toHexString() : authorIdObj.toString()) : null;
+      const isAuthor = currentUserId && authorIdStr === currentUserId;
       
       // Se moderado, esconde conteúdo original
       let displayContent = c.content;
@@ -465,6 +467,32 @@ export class NewsService implements OnModuleInit {
           name: `${(c.authorId as any).firstName} ${(c.authorId as any).lastName || ''}`.trim(),
           photoUrl: (c.authorId as any).photoUrl
         } : null
+      };
+    });
+  }
+
+  async getLatestGlobalComments(limit: number = 6) {
+    const comments = await this.commentModel.find({ status: 'APPROVED' })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('authorId', 'firstName lastName photoUrl')
+      .populate('newsId', 'slug')
+      .exec();
+      
+    return comments.map(c => {
+      let displayContent = c.content;
+      if (c.isModerated) displayContent = 'Este comentário foi moderado pela administração.';
+      
+      const newsSlug = c.newsId ? (c.newsId as any).slug : 'undefined';
+
+      return {
+        id: c._id.toHexString(),
+        content: displayContent,
+        isModerated: c.isModerated,
+        createdAt: c.createdAt,
+        newsSlug: newsSlug,
+        authorName: c.authorId ? `${(c.authorId as any).firstName} ${(c.authorId as any).lastName || ''}`.trim() : 'Torcedor Anônimo',
+        authorPhoto: c.authorId ? (c.authorId as any).photoUrl : null
       };
     });
   }

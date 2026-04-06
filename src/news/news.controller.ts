@@ -138,6 +138,12 @@ export class NewsController {
     return this.newsService.uploadImage(file);
   }
 
+  @Get('comments/latest')
+  @ApiOperation({ summary: 'Listar últimos comentários de todas as matérias' })
+  getLatestComments(@Query('limit') limit?: number) {
+    return this.newsService.getLatestGlobalComments(limit ? Number(limit) : 6);
+  }
+
   @Post('comments/:id/moderate')
   @ApiOperation({ summary: 'Moderar um comentário (justificativa de deleção/alteração)' })
   moderateComment(
